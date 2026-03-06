@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理系统 - 控制台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
+<div class="wrapper">
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light shadow-sm">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="#" class="nav-link">管理控制台</a>
+            </li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+                <button
+                    id="lock-btn"
+                    type="button"
+                    class="btn btn-outline-secondary top-action-btn mr-2"
+                    onclick="window.AppDashboard && window.AppDashboard.showLockScreen && window.AppDashboard.showLockScreen()">
+                    <i class="fas fa-lock mr-1"></i>锁屏
+                </button>
+            </li>
+            <li class="nav-item">
+                <button id="logout-btn" type="button" class="btn btn-outline-danger top-action-btn">
+                    <i class="fas fa-sign-out-alt mr-1"></i>退出
+                </button>
+            </li>
+        </ul>
+    </nav>
+
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="#" class="brand-link">
+            <span class="brand-text font-weight-light">智能后台系统</span>
+        </a>
+
+        <div class="sidebar">
+            <div class="user-panel mt-3 pb-3 mb-3 d-flex align-items-center">
+                <div class="image">
+                    <img src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
+                </div>
+                <div class="info">
+                    <a id="user-nickname" href="#" class="d-block">加载中...</a>
+                </div>
+            </div>
+
+            <nav class="mt-2">
+                <ul id="sidebar-menu" class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false"></ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper dashboard-gradient-bg">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 id="page-title" class="m-0">系统概览</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="#">首页</a></li>
+                            <li id="page-subtitle" class="breadcrumb-item active">仪表盘</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row" id="overview-cards">
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-info shadow-sm">
+                            <div class="inner">
+                                <h3 id="metric-users">-</h3>
+                                <p>系统用户数</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-users"></i></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-success shadow-sm">
+                            <div class="inner">
+                                <h3 id="metric-menus">-</h3>
+                                <p>菜单权限数</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-list"></i></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-warning shadow-sm">
+                            <div class="inner">
+                                <h3 id="metric-online">-</h3>
+                                <p>在线会话数</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-signal"></i></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-danger shadow-sm">
+                            <div class="inner">
+                                <h3 id="metric-time">-</h3>
+                                <p>服务器时间</p>
+                            </div>
+                            <div class="icon"><i class="far fa-clock"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-7">
+                        <div class="card card-outline card-primary shadow-sm">
+                            <div class="card-header">
+                                <h3 class="card-title">系统趋势</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="overviewChart" height="180"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="card card-outline card-info shadow-sm" id="dynamic-panel">
+                            <div class="card-header">
+                                <h3 class="card-title">功能面板</h3>
+                            </div>
+                            <div id="dynamic-content" class="card-body">
+                                <div class="skeleton-block"></div>
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="main-footer text-sm">
+        <strong>Prompt2Repo Admin</strong> · Powered by Spring Boot + AdminLTE.
+        <div class="float-right d-none d-sm-inline-block">v1.0.0</div>
+    </footer>
+</div>
+
+<div id="lock-screen" class="lock-screen d-none">
+    <div class="lock-card card shadow-lg">
+        <div class="card-body p-4 text-center">
+            <img src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg" class="img-circle elevation-2 mb-3" width="86" height="86" alt="avatar">
+            <h4 class="font-weight-bold mb-1" id="lock-user">管理员</h4>
+            <p class="text-muted mb-3">系统已锁定，请输入密码解锁</p>
+            <form id="unlock-form" novalidate>
+                <div class="input-group mb-3">
+                    <input id="unlock-password" type="password" class="form-control" placeholder="请输入密码" maxlength="64" required>
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="submit">解锁</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container p-3">
+    <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2600">
+        <div class="toast-header bg-primary text-white">
+            <strong class="mr-auto">系统提示</strong>
+            <button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div id="appToastBody" class="toast-body"></div>
+    </div>
+</div>
+
+<div id="global-loading" class="global-loading d-none">
+    <div class="spinner-border text-light" role="status" aria-label="loading"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="assets/js/common.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

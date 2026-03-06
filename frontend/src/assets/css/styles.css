@@ -1,0 +1,442 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-gradient-1: #e0c3fc;
+    --bg-gradient-2: #8ec5fc;
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    --hover-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+    --primary-color: #4a90e2;
+    --transition-speed: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Base Typography */
+html,
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100%;
+    color: #2c3e50;
+    scroll-behavior: smooth;
+}
+
+/* Dynamic Animated Background */
+@keyframes meshGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.login-gradient-bg,
+.dashboard-gradient-bg,
+body {
+    background: linear-gradient(-45deg, #f3e7ff, #e3f2fd, #fff5f5, #e0c3fc, #8ec5fc);
+    background-size: 400% 400%;
+    animation: meshGradient 15s ease infinite;
+    background-attachment: fixed;
+}
+
+/* Glassmorphism Cards & Panels */
+.card,
+.small-box,
+.lock-card,
+.main-header,
+.main-sidebar,
+.toast {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--glass-shadow) !important;
+    transition: all var(--transition-speed);
+}
+
+/* Override Main Sidebar for Glassmorphism */
+.sidebar-dark-primary {
+    background-color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.sidebar-dark-primary .nav-sidebar .nav-link,
+.sidebar-dark-primary .brand-link,
+.sidebar-dark-primary .user-panel a,
+.sidebar-dark-primary .brand-text {
+    color: #2c3e50 !important;
+    font-weight: 500;
+}
+
+.sidebar-dark-primary .nav-sidebar .nav-link i {
+    color: var(--primary-color) !important;
+}
+
+.sidebar-dark-primary .nav-sidebar .nav-link.active,
+.sidebar-dark-primary .nav-sidebar .nav-link:hover {
+    background: rgba(74, 144, 226, 0.15) !important;
+    color: var(--primary-color) !important;
+    box-shadow: none !important;
+    transform: translateX(6px);
+}
+
+.brand-link,
+.user-panel {
+    border-bottom: 1px solid var(--glass-border) !important;
+}
+
+/* Typography Enhancements */
+.brand-text {
+    font-weight: 700 !important;
+    background: linear-gradient(45deg, #4a90e2, #b276ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    letter-spacing: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 600 !important;
+    color: #1a202c;
+}
+
+/* Micro-animations */
+.btn,
+.nav-link,
+.small-box,
+.card {
+    transition: all var(--transition-speed);
+}
+
+.btn:hover,
+.nav-link:hover:not(.brand-link) {
+    transform: translateY(-2px);
+    box-shadow: var(--hover-shadow);
+}
+
+.small-box:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.card:hover {
+    box-shadow: var(--hover-shadow) !important;
+}
+
+/* Small Boxes Enhancements (Dashboard Widgets) */
+.small-box {
+    overflow: hidden;
+    position: relative;
+    color: white !important;
+    border: none !important;
+}
+
+.small-box.bg-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+.small-box.bg-success {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+}
+
+.small-box.bg-warning {
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%) !important;
+}
+
+.small-box.bg-danger {
+    background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%) !important;
+}
+
+.small-box .inner {
+    padding: 20px;
+    z-index: 2;
+    position: relative;
+}
+
+.small-box h3 {
+    font-size: 2.4rem;
+    font-weight: 700 !important;
+    margin-bottom: 5px;
+    color: white !important;
+}
+
+.small-box .icon>i {
+    font-size: 80px;
+    opacity: 0.25;
+    transition: all var(--transition-speed);
+    right: 15px;
+    top: 15px;
+}
+
+.small-box:hover .icon>i {
+    transform: scale(1.2) rotate(15deg);
+    opacity: 0.45;
+}
+
+/* Customizing Inputs and Forms */
+.form-control {
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.8) !important;
+    padding: 0.75rem 1rem;
+    height: auto;
+    font-size: 1rem;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.form-control:focus {
+    box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.2);
+    border-color: #4a90e2;
+    background: #fff !important;
+    transform: translateY(-1px);
+}
+
+.input-group-text {
+    border-radius: 0 10px 10px 0;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-left: none;
+    color: #4a90e2;
+}
+
+.input-group .form-control {
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+}
+
+/* Premium Buttons */
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    padding: 0.6rem 1.2rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
+}
+
+.btn-outline-secondary {
+    border-color: #cbd5e0;
+    color: #4a5568;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.btn-outline-danger {
+    border-color: #feb2b2;
+    color: #e53e3e;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+/* Floating Login Box Animation */
+.login-box-wide {
+    width: 440px;
+    transform: translateY(0);
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-12px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+/* Header Tweaks for Modern Look */
+.content-wrapper {
+    background: transparent !important;
+}
+
+.main-header {
+    border-bottom: none !important;
+    margin-left: calc(250px + 15px);
+    margin-top: 15px;
+    margin-right: 15px;
+    border-radius: 16px !important;
+    width: auto;
+}
+
+body:not(.sidebar-mini-md):not(.sidebar-mini-xs).layout-fixed.sidebar-collapse .main-header {
+    margin-left: calc(80px + 15px);
+}
+
+.content-header {
+    padding-top: 30px;
+}
+
+.top-action-btn {
+    min-height: 40px;
+}
+
+/* Lock Screen Glassmorphism UI */
+.lock-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    padding: 16px;
+}
+
+.lock-screen:not(.d-none) {
+    display: flex !important;
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0);
+    }
+
+    to {
+        opacity: 1;
+        backdrop-filter: blur(20px);
+    }
+}
+
+body.lock-mode {
+    overflow: hidden;
+}
+
+.lock-card {
+    width: 100%;
+    max-width: 420px;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
+}
+
+.lock-card h4,
+.lock-card p {
+    color: white !important;
+}
+
+.lock-card .form-control {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.lock-card .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.lock-card .form-control:focus {
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
+    border-color: #fff;
+}
+
+.lock-card .btn-primary {
+    background: #fff;
+    color: #1a202c;
+}
+
+.lock-card .btn-primary:hover {
+    transform: scale(1.05);
+}
+
+/* Global Loading screen */
+.global-loading {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+}
+
+.global-loading .spinner-border {
+    color: var(--primary-color) !important;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-width: 0.3em;
+}
+
+/* Skeleton Loading (Smoother Gradients) */
+.skeleton-block,
+.skeleton-line {
+    background: linear-gradient(90deg, rgba(237, 242, 248, 0.4) 25%, rgba(246, 249, 252, 0.7) 37%, rgba(237, 242, 248, 0.4) 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.skeleton-block {
+    width: 100%;
+    height: 78px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+}
+
+.skeleton-line {
+    width: 100%;
+    height: 16px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.skeleton-line.short {
+    width: 66%;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: -100% 0;
+    }
+}
+
+/* Responsiveness adjustments */
+@media (max-width: 767px) {
+    .login-box-wide {
+        width: 92%;
+        animation: none;
+    }
+
+    .content-wrapper .content {
+        padding: 0 10px;
+    }
+
+    .small-box h3 {
+        font-size: 2rem;
+    }
+
+    .main-header {
+        margin-left: 10px;
+        margin-right: 10px;
+    }
+}

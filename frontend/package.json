@@ -1,0 +1,10 @@
+{
+  "name": "admin-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AdminLTE frontend for Prompt2Repo",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

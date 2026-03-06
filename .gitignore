@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Environment
+.env
+
+# Java
+backend/target/
+backend/.mvn/
+backend/*.iml
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Python
+__pycache__/
+.venv/
+
+# Docker overrides
+docker-compose.override.yml
