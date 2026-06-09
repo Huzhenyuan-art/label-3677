@@ -78,52 +78,37 @@
 
         <section class="content">
             <div class="container-fluid">
+                <div class="card scene-hero shadow-sm" id="scene-hero">
+                    <div class="card-body py-3">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between">
+                            <div>
+                                <h3 class="scene-title mb-1" id="scene-hero-title">系统总览</h3>
+                                <p class="scene-desc mb-0" id="scene-hero-desc">查看系统核心指标、账号状态与权限变化。</p>
+                            </div>
+                            <div class="scene-tags mt-2 mt-md-0" id="scene-hero-tags"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row" id="overview-cards">
                     <div class="col-lg-3 col-6">
-                        <div class="small-box bg-info shadow-sm">
+                        <div class="small-box tone-info shadow-sm">
                             <div class="inner">
-                                <h3 id="metric-users">-</h3>
-                                <p>系统用户数</p>
+                                <h3>-</h3>
+                                <p>加载中</p>
                             </div>
-                            <div class="icon"><i class="fas fa-users"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-success shadow-sm">
-                            <div class="inner">
-                                <h3 id="metric-menus">-</h3>
-                                <p>菜单权限数</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-list"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-warning shadow-sm">
-                            <div class="inner">
-                                <h3 id="metric-online">-</h3>
-                                <p>在线会话数</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-signal"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-danger shadow-sm">
-                            <div class="inner">
-                                <h3 id="metric-time">-</h3>
-                                <p>服务器时间</p>
-                            </div>
-                            <div class="icon"><i class="far fa-clock"></i></div>
+                            <div class="icon"><i class="fas fa-circle-notch fa-spin"></i></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-lg-7">
-                        <div class="card card-outline card-primary shadow-sm">
+                        <div class="card card-outline card-primary shadow-sm" id="primary-panel">
                             <div class="card-header">
-                                <h3 class="card-title">系统趋势</h3>
+                                <h3 class="card-title" id="primary-panel-title">系统趋势</h3>
                             </div>
-                            <div class="card-body">
+                            <div id="primary-panel-body" class="card-body">
                                 <canvas id="overviewChart" height="180"></canvas>
                             </div>
                         </div>
@@ -131,7 +116,7 @@
                     <div class="col-lg-5">
                         <div class="card card-outline card-info shadow-sm" id="dynamic-panel">
                             <div class="card-header">
-                                <h3 class="card-title">功能面板</h3>
+                                <h3 class="card-title" id="dynamic-panel-title">功能面板</h3>
                             </div>
                             <div id="dynamic-content" class="card-body">
                                 <div class="skeleton-block"></div>
