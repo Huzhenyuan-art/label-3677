@@ -2,13 +2,13 @@ package com.prompt2repo.admin.dto;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @Data
 public class AssignMenusRequest {
+    @NotNull(message = "角色ID不能为空")
     private Long roleId;
 
-    @NotEmpty(message = "菜单ID列表不能为空")
     private List<Long> menuIds;
 }

@@ -17,9 +17,9 @@ import com.prompt2repo.admin.entity.SysUserRole;
 import com.prompt2repo.admin.exception.BusinessException;
 import com.prompt2repo.admin.mapper.SysRoleMapper;
 import com.prompt2repo.admin.mapper.SysRoleMenuMapper;
+import com.prompt2repo.admin.mapper.SysUserMapper;
 import com.prompt2repo.admin.mapper.SysUserRoleMapper;
 import com.prompt2repo.admin.service.SysRoleService;
-import com.prompt2repo.admin.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +39,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     private final SysRoleMenuMapper sysRoleMenuMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
-    private final SysUserService sysUserService;
+    private final SysUserMapper sysUserMapper;
 
     private static final String SUPER_ADMIN_CODE = "SUPER_ADMIN";
 
@@ -198,7 +198,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     @Transactional
     public void assignRoles(AssignRolesRequest request) {
-        SysUser user = sysUserService.getById(request.getUserId());
+        SysUser user = sysUserMapper.selectById(request.getUserId());
         if (user == null) {
             throw new BusinessException(404, "用户不存在");
         }
