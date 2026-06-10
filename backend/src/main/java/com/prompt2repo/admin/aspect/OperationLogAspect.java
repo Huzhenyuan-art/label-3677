@@ -118,6 +118,20 @@ public class OperationLogAspect {
             result = joinPoint.proceed();
             operationLog.setSuccess(1);
 
+            if (operationLog.getOperatorId() == null) {
+                try {
+                    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                    if (authentication != null && authentication.getPrincipal() instanceof LoginUserDetails) {
+                        LoginUserDetails userDetails = (LoginUserDetails) authentication.getPrincipal();
+                        operationLog.setOperatorId(userDetails.getUser().getId());
+                        operationLog.setOperatorUsername(userDetails.getUser().getUsername());
+                        operationLog.setOperatorNickname(userDetails.getUser().getNickname());
+                    }
+                } catch (Exception e) {
+                    log.warn("方法执行后获取当前登录用户信息失败", e);
+                }
+            }
+
             try {
                 MethodSignature signature = (MethodSignature) joinPoint.getSignature();
                 Method method = signature.getMethod();
@@ -137,6 +151,32 @@ public class OperationLogAspect {
         } catch (Throwable e) {
             operationLog.setSuccess(0);
             operationLog.setErrorMessage(e.getMessage());
+
+            if (operationLog.getOperatorId() == null) {
+                try {
+                    MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+                    String[] paramNames = signature.getParameterNames();
+                    Object[] paramValues = joinPoint.getArgs();
+                    if (paramNames != null && paramValues != null) {
+                        for (int i = 0; i < paramNames.length; i++) {
+                            if ("loginRequest".equals(paramNames[i]) && paramValues[i] != null) {
+                                try {
+                                    Object username = objectMapper.convertValue(paramValues[i], java.util.Map.class).get("username");
+                                    if (username != null) {
+                                        operationLog.setOperatorUsername(username.toString());
+                                    }
+                                } catch (Exception ex) {
+                                    log.debug("从登录请求中提取用户名失败", ex);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.warn("从请求参数提取操作人信息失败", ex);
+                }
+            }
+
             throw e;
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
