@@ -224,6 +224,62 @@
         }
     }
 
+    function base64UrlDecode(str) {
+        var base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+        var padding = (4 - base64.length % 4) % 4;
+        base64 += new Array(padding + 1).join('=');
+        try {
+            var decoded = decodeURIComponent(
+                atob(base64)
+                    .split('')
+                    .map(function (c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    })
+                    .join('')
+            );
+            return decoded;
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function parseJwtPayload(token) {
+        if (!token) {
+            return null;
+        }
+        var parts = token.split('.');
+        if (parts.length !== 3) {
+            return null;
+        }
+        var payload = base64UrlDecode(parts[1]);
+        return parseJson(payload, null);
+    }
+
+    function getTokenExpireTime() {
+        var token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+        if (!token) {
+            return 0;
+        }
+        var payload = parseJwtPayload(token);
+        if (!payload || !payload.exp) {
+            return 0;
+        }
+        return payload.exp * 1000;
+    }
+
+    function getRemainingTokenTime() {
+        var expireTime = getTokenExpireTime();
+        if (!expireTime) {
+            return 0;
+        }
+        var remaining = Math.floor((expireTime - Date.now()) / 1000);
+        return Math.max(0, remaining);
+    }
+
+    function isTokenExpired() {
+        return getRemainingTokenTime() <= 0;
+    }
+
     window.AppCommon = {
         STORAGE_KEYS: STORAGE_KEYS,
         DEFAULT_IDLE_TIMEOUT: DEFAULT_IDLE_TIMEOUT,
@@ -242,6 +298,10 @@
         stopIdleMonitoring: stopIdleMonitoring,
         resetIdleTimer: resetIdleTimer,
         getRemainingIdleTime: getRemainingIdleTime,
-        updateLastActivity: updateLastActivity
+        updateLastActivity: updateLastActivity,
+        parseJwtPayload: parseJwtPayload,
+        getTokenExpireTime: getTokenExpireTime,
+        getRemainingTokenTime: getRemainingTokenTime,
+        isTokenExpired: isTokenExpired
     };
 })(window);

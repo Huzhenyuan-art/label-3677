@@ -41,8 +41,12 @@
 
     var pendingDeleteUserId = null;
     var idleRemainingInterval = null;
+    var tokenCountdownInterval = null;
     var overviewRefreshTimer = null;
     var OVERVIEW_REFRESH_INTERVAL = 30000;
+    var TOKEN_WARNING_THRESHOLD = 300;
+    var TOKEN_DANGER_THRESHOLD = 60;
+    var tokenExpiredNotified = false;
 
     function startIdleRemainingTimer() {
         stopIdleRemainingTimer();
@@ -87,6 +91,70 @@
         updateIdleRemainingText();
     }
 
+    function startTokenCountdown() {
+        stopTokenCountdown();
+        updateTokenCountdownText();
+        tokenCountdownInterval = setInterval(updateTokenCountdownText, 1000);
+    }
+
+    function stopTokenCountdown() {
+        if (tokenCountdownInterval) {
+            clearInterval(tokenCountdownInterval);
+            tokenCountdownInterval = null;
+        }
+    }
+
+    function updateTokenCountdownText() {
+        var countdownEl = $('#token-countdown');
+        var textEl = $('#token-countdown-text');
+        if (!textEl.length) {
+            stopTokenCountdown();
+            return;
+        }
+
+        var remaining = AppCommon.getRemainingTokenTime();
+        if (remaining <= 0) {
+            stopTokenCountdown();
+            textEl.text('已过期');
+            countdownEl.removeClass('token-warning token-danger').addClass('token-expired');
+            if (!tokenExpiredNotified) {
+                tokenExpiredNotified = true;
+                handleTokenExpired();
+            }
+            return;
+        }
+
+        var hours = Math.floor(remaining / 3600);
+        var minutes = Math.floor((remaining % 3600) / 60);
+        var seconds = remaining % 60;
+        var text = '';
+        if (hours > 0) {
+            text += hours + ' 时 ';
+        }
+        if (minutes > 0 || hours > 0) {
+            text += minutes + ' 分 ';
+        }
+        text += seconds + ' 秒';
+        textEl.text(text);
+
+        countdownEl.removeClass('token-warning token-danger token-expired');
+        if (remaining <= TOKEN_DANGER_THRESHOLD) {
+            countdownEl.addClass('token-danger');
+        } else if (remaining <= TOKEN_WARNING_THRESHOLD) {
+            countdownEl.addClass('token-warning');
+        }
+    }
+
+    function handleTokenExpired() {
+        AppCommon.showToast('登录令牌已过期，请重新登录', 'bg-warning');
+        AppCommon.stopIdleMonitoring();
+        stopIdleRemainingTimer();
+        stopTokenCountdown();
+        stopOverviewRefresh();
+        AppCommon.clearAuth();
+        setTimeout(AppCommon.redirectToLogin, 800);
+    }
+
     $(function () {
         AppCommon.setupAjax();
 
@@ -96,9 +164,16 @@
             return;
         }
 
+        if (AppCommon.isTokenExpired()) {
+            AppCommon.clearAuth();
+            AppCommon.redirectToLogin();
+            return;
+        }
+
         bindEvents();
         loadBaseData();
         startIdleMonitor();
+        startTokenCountdown();
 
         window.AppDashboard = {
             showLockScreen: showLockScreen
@@ -130,6 +205,8 @@
             $('#logout-confirm-modal').modal('hide');
             AppCommon.stopIdleMonitoring();
             stopIdleRemainingTimer();
+            stopTokenCountdown();
+            stopOverviewRefresh();
             localStorage.removeItem(AppCommon.STORAGE_KEYS.IDLE_TIMEOUT);
             localStorage.removeItem(AppCommon.STORAGE_KEYS.IDLE_LAST_ACTIVITY);
             AppCommon.clearAuth();

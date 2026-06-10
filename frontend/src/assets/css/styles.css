@@ -245,6 +245,104 @@ h6 {
     font-weight: 600;
 }
 
+.token-countdown-wrapper {
+    display: inline-flex;
+    align-items: center;
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4f5f7a;
+    background: #f4f7fc;
+    border: 1px solid #d8e0ee;
+    transition: all 0.3s ease;
+}
+
+.token-countdown-wrapper i {
+    color: #5f7294;
+}
+
+.token-countdown-label {
+    margin-right: 2px;
+    color: #6b7892;
+}
+
+.token-countdown-text {
+    font-weight: 600;
+    color: #3f5b86;
+    font-variant-numeric: tabular-nums;
+}
+
+.token-countdown-wrapper.token-warning {
+    background: #fff8e8;
+    border-color: #f0d6a8;
+    color: #8d6b35;
+    animation: tokenWarningPulse 1.5s ease-in-out infinite;
+}
+
+.token-countdown-wrapper.token-warning i,
+.token-countdown-wrapper.token-warning .token-countdown-label,
+.token-countdown-wrapper.token-warning .token-countdown-text {
+    color: #8d6b35;
+}
+
+.token-countdown-wrapper.token-danger {
+    background: #fff1f1;
+    border-color: #f0c8c8;
+    color: #9f4c4c;
+    animation: tokenDangerPulse 1s ease-in-out infinite;
+}
+
+.token-countdown-wrapper.token-danger i,
+.token-countdown-wrapper.token-danger .token-countdown-label,
+.token-countdown-wrapper.token-danger .token-countdown-text {
+    color: #9f4c4c;
+}
+
+.token-countdown-wrapper.token-expired {
+    background: #f5f5f5;
+    border-color: #d0d0d0;
+    color: #888;
+}
+
+.token-countdown-wrapper.token-expired i,
+.token-countdown-wrapper.token-expired .token-countdown-label,
+.token-countdown-wrapper.token-expired .token-countdown-text {
+    color: #888;
+}
+
+@keyframes tokenWarningPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(240, 214, 168, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(240, 214, 168, 0);
+    }
+}
+
+@keyframes tokenDangerPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(240, 200, 200, 0.6);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(240, 200, 200, 0);
+        transform: scale(1.02);
+    }
+}
+
+@media (max-width: 767px) {
+    .token-countdown-wrapper {
+        padding: 0 10px;
+        font-size: 0.75rem;
+        height: 34px;
+    }
+    .token-countdown-label {
+        display: none;
+    }
+}
+
 .btn {
     border-radius: 10px;
 }
