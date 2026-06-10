@@ -56,6 +56,7 @@
                 }, 400);
             },
             complete: function () {
+                AppCommon.hideLoading();
                 $('#login-btn').prop('disabled', false).text('登录系统');
             }
         });
