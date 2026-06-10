@@ -30,6 +30,16 @@
     function bindEvents() {
         $('#logout-btn').off('click pointerup').on('click pointerup', function (event) {
             event.preventDefault();
+            $('#logout-confirm-modal').modal('show');
+        });
+
+        $(document).off('click.logout').on('click.logout', '#logout-btn', function (event) {
+            event.preventDefault();
+            $('#logout-confirm-modal').modal('show');
+        });
+
+        $(document).off('click.logoutConfirm').on('click.logoutConfirm', '#logout-confirm-btn', function () {
+            $('#logout-confirm-modal').modal('hide');
             AppCommon.clearAuth();
             AppCommon.showToast('已退出登录', 'bg-primary');
             setTimeout(AppCommon.redirectToLogin, 250);
@@ -43,13 +53,6 @@
         $(document).off('click.lock').on('click.lock', '#lock-btn', function (event) {
             event.preventDefault();
             showLockScreen();
-        });
-
-        $(document).off('click.logout').on('click.logout', '#logout-btn', function (event) {
-            event.preventDefault();
-            AppCommon.clearAuth();
-            AppCommon.showToast('已退出登录', 'bg-primary');
-            setTimeout(AppCommon.redirectToLogin, 250);
         });
 
         $('#unlock-form').on('submit', function (event) {
