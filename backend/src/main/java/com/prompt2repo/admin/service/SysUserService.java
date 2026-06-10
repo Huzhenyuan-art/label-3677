@@ -10,4 +10,6 @@ public interface SysUserService extends IService<SysUser> {
     Optional<SysUser> findByUsername(String username);
 
     void updateLastLogin(Long userId);
+
+    void updateProfile(Long userId, String nickname, String avatar);
 }

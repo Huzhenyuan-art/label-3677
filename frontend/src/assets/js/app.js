@@ -83,7 +83,17 @@
 
     function renderUserFromStorage() {
         var user = AppCommon.parseJson(localStorage.getItem(AppCommon.STORAGE_KEYS.USER), {});
-        $('#user-nickname').text(user.nickname || user.username || '管理员');
+        syncUserUI(user);
+    }
+
+    function syncUserUI(user) {
+        var displayName = (user && (user.nickname || user.username)) || '管理员';
+        $('#user-nickname').text(displayName);
+        var avatarUrl = (user && user.avatar) || 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg';
+        var sidebarAvatar = $('.user-panel .image img');
+        if (sidebarAvatar.length) {
+            sidebarAvatar.attr('src', avatarUrl);
+        }
     }
 
     function renderMenusFromStorage() {
@@ -102,7 +112,7 @@
                 return;
             }
             localStorage.setItem(AppCommon.STORAGE_KEYS.USER, JSON.stringify(resp.data));
-            $('#user-nickname').text(resp.data.nickname || resp.data.username || '管理员');
+            syncUserUI(resp.data);
             if (currentMenu.path === '/profile') {
                 renderProfileScene();
             }
@@ -281,14 +291,14 @@
 
         setHero(
             '个人中心',
-            '查看账号信息、安全状态与近期系统操作建议。',
-            ['账户视图', '安全检查', '个人资料']
+            '查看并编辑账号信息、安全状态与个人资料。',
+            ['账户视图', '安全检查', '资料编辑']
         );
 
         renderOverviewCards([
             { label: '用户编号', value: user.id || '-', icon: 'far fa-id-card', tone: 'tone-info', note: '系统唯一标识' },
             { label: '登录账号', value: user.username || '-', icon: 'fas fa-user-shield', tone: 'tone-success', note: '用于登录认证' },
-            { label: '展示昵称', value: displayName, icon: 'far fa-smile', tone: 'tone-warning', note: '用于页面展示' },
+            { label: '展示昵称', value: displayName, icon: 'far fa-smile', tone: 'tone-warning', note: '可在右侧面板修改' },
             { label: '资料更新时间', value: formatTime(new Date().toISOString()), icon: 'far fa-calendar-check', tone: 'tone-danger', note: '当前页面刷新时间' }
         ]);
 
@@ -302,7 +312,7 @@
             '<div class="mt-3 text-muted text-sm">建议定期更新密码并开启更多认证策略，以提升账户安全等级。</div>'
         );
 
-        $('#dynamic-panel-title').text('个人档案');
+        $('#dynamic-panel-title').text('编辑个人资料');
         renderProfilePanel(user);
     }
 
@@ -420,14 +430,73 @@
     }
 
     function renderProfilePanel(user) {
+        var avatarUrl = user.avatar || 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg';
         var html = '' +
-            '<dl class="row mb-3">' +
-            '<dt class="col-sm-4">用户ID</dt><dd class="col-sm-8">' + escapeHtml(String(user.id || '-')) + '</dd>' +
-            '<dt class="col-sm-4">用户名</dt><dd class="col-sm-8">' + escapeHtml(user.username || '-') + '</dd>' +
-            '<dt class="col-sm-4">昵称</dt><dd class="col-sm-8">' + escapeHtml(user.nickname || '-') + '</dd>' +
-            '</dl>' +
-            '<div class="text-muted text-sm">如需修改个人资料，可在后续接入用户中心编辑接口。</div>';
+            '<div class="text-center mb-3">' +
+            '<img id="profile-avatar-preview" src="' + escapeHtml(avatarUrl) + '" class="img-circle elevation-2" width="80" height="80" alt="avatar" onerror="this.src=\'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg\'">' +
+            '</div>' +
+            '<form id="profile-form" novalidate>' +
+            '<div class="form-group">' +
+            '<label for="profile-nickname">昵称</label>' +
+            '<input id="profile-nickname" type="text" class="form-control" maxlength="64" placeholder="请输入昵称" value="' + escapeHtml(user.nickname || '') + '" required>' +
+            '<small class="form-text text-muted">昵称将显示在侧边栏与页面各处</small>' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label for="profile-avatar">头像链接</label>' +
+            '<input id="profile-avatar" type="url" class="form-control" maxlength="255" placeholder="请输入头像图片URL" value="' + escapeHtml(user.avatar || '') + '">' +
+            '<small class="form-text text-muted">输入图片链接后，上方将实时预览头像效果</small>' +
+            '</div>' +
+            '<button id="profile-save-btn" type="submit" class="btn btn-primary btn-block py-2 font-weight-bold">保存修改</button>' +
+            '</form>';
         $('#dynamic-content').html(html);
+
+        $('#profile-avatar').off('input.profileAvatar').on('input.profileAvatar', function () {
+            var url = $.trim($(this).val());
+            var preview = $('#profile-avatar-preview');
+            if (url) {
+                preview.attr('src', url);
+            } else {
+                preview.attr('src', 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg');
+            }
+        });
+
+        $('#profile-form').off('submit.profileSave').on('submit.profileSave', function (event) {
+            event.preventDefault();
+            saveProfile();
+        });
+    }
+
+    function saveProfile() {
+        var nickname = $.trim($('#profile-nickname').val());
+        var avatar = $.trim($('#profile-avatar').val());
+
+        if (!nickname) {
+            AppCommon.showToast('昵称不能为空', 'bg-warning');
+            return;
+        }
+
+        $('#profile-save-btn').prop('disabled', true).text('保存中...');
+
+        $.ajax({
+            url: '/api/auth/profile',
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({ nickname: nickname, avatar: avatar }),
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    AppCommon.showToast(resp ? resp.message : '保存失败', 'bg-danger');
+                    return;
+                }
+                localStorage.setItem(AppCommon.STORAGE_KEYS.USER, JSON.stringify(resp.data));
+                syncUserUI(resp.data);
+                var newAvatar = resp.data.avatar || 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg';
+                $('#profile-avatar-preview').attr('src', newAvatar);
+                AppCommon.showToast('资料更新成功', 'bg-success');
+            },
+            complete: function () {
+                $('#profile-save-btn').prop('disabled', false).text('保存修改');
+            }
+        });
     }
 
     function renderMenusPanel(stats) {

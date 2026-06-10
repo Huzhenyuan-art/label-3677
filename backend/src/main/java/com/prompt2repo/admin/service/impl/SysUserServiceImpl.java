@@ -28,4 +28,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 .set(SysUser::getLastLoginAt, LocalDateTime.now());
         update(updateWrapper);
     }
+
+    @Override
+    public void updateProfile(Long userId, String nickname, String avatar) {
+        LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SysUser::getId, userId)
+                .set(SysUser::getNickname, nickname)
+                .set(SysUser::getAvatar, avatar);
+        update(updateWrapper);
+    }
 }

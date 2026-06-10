@@ -4,6 +4,7 @@ import com.prompt2repo.admin.common.ApiResponse;
 import com.prompt2repo.admin.dto.LoginRequest;
 import com.prompt2repo.admin.dto.LoginResponseVO;
 import com.prompt2repo.admin.dto.UnlockRequest;
+import com.prompt2repo.admin.dto.UpdateProfileRequest;
 import com.prompt2repo.admin.dto.UserProfileVO;
 import com.prompt2repo.admin.entity.SysUser;
 import com.prompt2repo.admin.exception.BusinessException;
@@ -25,6 +26,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -99,6 +101,16 @@ public class AuthController {
         return ApiResponse.success(toUserProfile(currentUser));
     }
 
+    @PutMapping("/profile")
+    public ApiResponse<UserProfileVO> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
+                                                     Authentication authentication) {
+        SysUser currentUser = getCurrentUser(authentication);
+        sysUserService.updateProfile(currentUser.getId(), request.getNickname(), request.getAvatar());
+        log.info("用户资料更新成功 username={}", currentUser.getUsername());
+        SysUser updated = sysUserService.getById(currentUser.getId());
+        return ApiResponse.success("资料更新成功", toUserProfile(updated));
+    }
+
     private LoginResponseVO buildLoginResponse(SysUser user, String token) {
         return LoginResponseVO.builder()
                 .token(token)
@@ -113,6 +125,7 @@ public class AuthController {
                 .id(user.getId())
                 .username(user.getUsername())
                 .nickname(user.getNickname())
+                .avatar(user.getAvatar())
                 .build();
     }
 

@@ -22,6 +22,8 @@ public class SysUser {
 
     private String nickname;
 
+    private String avatar;
+
     @TableField("user_status")
     private Integer userStatus;
 
