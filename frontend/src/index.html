@@ -269,6 +269,84 @@
     </div>
 </div>
 
+<div id="menu-form-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="menu-form-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="menu-form-label">新增菜单</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="menu-form" novalidate>
+                <input type="hidden" id="mf-id">
+                <input type="hidden" id="mf-parent-id" value="0">
+                <div class="modal-body">
+                    <div id="mf-error-msg" class="alert alert-danger d-none py-2 mb-3" role="alert"></div>
+                    <div class="form-group">
+                        <label for="mf-parent-title">上级菜单</label>
+                        <input id="mf-parent-title" type="text" class="form-control" readonly value="顶级菜单">
+                        <small class="form-text text-muted">选择新增菜单的父级节点</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-title">菜单名称 <span class="text-danger">*</span></label>
+                        <input id="mf-title" type="text" class="form-control" maxlength="64" placeholder="请输入菜单名称" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-path">菜单路径 <span class="text-danger">*</span></label>
+                        <input id="mf-path" type="text" class="form-control" maxlength="128" placeholder="如 /dashboard 或 #（目录用#）" required>
+                        <small class="form-text text-muted">页面路由路径，目录节点请填写 #</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-icon">图标类名</label>
+                        <input id="mf-icon" type="text" class="form-control" maxlength="64" placeholder="如 fas fa-list">
+                        <small class="form-text text-muted">FontAwesome 图标类名，选填</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-perm-code">权限码 <span class="text-danger">*</span></label>
+                        <input id="mf-perm-code" type="text" class="form-control" maxlength="64" placeholder="如 menu:manage" required>
+                        <small class="form-text text-muted">用于后端 @PreAuthorize 鉴权</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-sort-order">排序值</label>
+                        <input id="mf-sort-order" type="number" class="form-control" min="0" value="1">
+                        <small class="form-text text-muted">数值越小越靠前，同级菜单按此排序</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-visible">显示状态</label>
+                        <select id="mf-visible" class="form-control">
+                            <option value="1">显示</option>
+                            <option value="0">隐藏</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="menu-delete-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="menu-delete-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="menu-delete-label">删除确认</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="menu-delete-body">确定要删除该菜单吗？</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="menu-delete-confirm-btn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container p-3">
     <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2600">
         <div class="toast-header bg-primary text-white">

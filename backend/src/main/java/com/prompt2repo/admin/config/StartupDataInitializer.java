@@ -59,7 +59,7 @@ public class StartupDataInitializer implements CommandLineRunner {
 
         Long systemMenuId = m2.getId();
         SysMenu m3 = buildMenu(systemMenuId, "用户信息", "/profile", "far fa-user", "user:view", 1, 1);
-        SysMenu m4 = buildMenu(systemMenuId, "菜单权限", "/menus", "fas fa-list", "menu:view", 2, 1);
+        SysMenu m4 = buildMenu(systemMenuId, "菜单权限", "/menus", "fas fa-list", "menu:manage", 2, 1);
         SysMenu m5 = buildMenu(systemMenuId, "用户管理", "/users", "fas fa-users-cog", "user:manage", 3, 1);
         List<SysMenu> list = Arrays.asList(m1, m2, m3, m4, m5);
         sysMenuService.saveBatch(Arrays.asList(m3, m4, m5));

@@ -603,3 +603,125 @@ body.lock-mode {
         padding: 12px;
     }
 }
+
+.menu-manage-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.menu-manage-tree {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-soft);
+    padding: 8px 0;
+    max-height: 520px;
+    overflow: auto;
+}
+
+.menu-manage-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.menu-manage-item {
+    position: relative;
+}
+
+.menu-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: #fff;
+    transition: background 0.15s ease;
+}
+
+.menu-manage-row:hover {
+    background: #f6faff;
+}
+
+.menu-manage-item:last-child > .menu-manage-row {
+    border-bottom: none;
+}
+
+.menu-manage-toggle {
+    width: 20px;
+    display: inline-flex;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.75rem;
+}
+
+.menu-manage-toggle:hover {
+    color: #355b91;
+}
+
+.menu-manage-placeholder {
+    display: inline-block;
+    width: 20px;
+}
+
+.menu-manage-icon {
+    width: 22px;
+    text-align: center;
+    color: #5f7294;
+}
+
+.menu-manage-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 80px;
+}
+
+.menu-manage-path {
+    font-size: 12px;
+    color: #70809f;
+    background: #f1f4fa;
+    border: 1px solid #dde5f1;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.menu-manage-perm {
+    font-size: 12px;
+    color: #5a6c8c;
+    background: #eef8f1;
+    border: 1px solid #d5efdf;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.menu-manage-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.menu-manage-actions .btn-sm {
+    padding: 2px 7px;
+    font-size: 0.75rem;
+    border-radius: 8px;
+}
+
+.menu-manage-list .menu-manage-list > .menu-manage-item > .menu-manage-row {
+    background: #fbfcfe;
+}
+
+.menu-manage-list .menu-manage-list .menu-manage-list > .menu-manage-item > .menu-manage-row {
+    background: #f8fafd;
+}
+
+@media (max-width: 767px) {
+    .menu-manage-path,
+    .menu-manage-perm {
+        display: none;
+    }
+
+    .menu-manage-actions .btn-sm {
+        padding: 2px 5px;
+    }
+}

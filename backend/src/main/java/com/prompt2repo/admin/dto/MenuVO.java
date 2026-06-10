@@ -20,6 +20,8 @@ public class MenuVO {
     private String path;
     private String icon;
     private String permCode;
+    private Integer sortOrder;
+    private Integer visible;
 
     @Builder.Default
     private List<MenuVO> children = new ArrayList<>();

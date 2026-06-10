@@ -20,6 +20,13 @@
         pages: 0
     };
 
+    var menuManageState = {
+        allMenus: [],
+        expandedIds: {},
+        pendingDeleteMenuId: null,
+        pendingDeleteMenuTitle: ''
+    };
+
     var pendingDeleteUserId = null;
     var idleRemainingInterval = null;
 
@@ -214,8 +221,22 @@
             renderSidebarMenus(resp.data);
             syncActiveMenuByPath(currentMenu.path);
             if (currentMenu.path === '/menus') {
-                renderMenusScene();
+                fetchAllMenusForManage();
             }
+        });
+    }
+
+    function fetchAllMenusForManage() {
+        $.get('/api/menus/all', function (resp) {
+            if (!resp || Number(resp.code) !== 0 || !Array.isArray(resp.data)) {
+                renderMenusScene();
+                return;
+            }
+            menuManageState.allMenus = resp.data;
+            renderMenusScene();
+        }).fail(function () {
+            menuManageState.allMenus = cachedMenus;
+            renderMenusScene();
         });
     }
 
@@ -769,12 +790,14 @@
 
     function renderMenusScene() {
         destroyOverviewChart();
+        bindMenuManageEvents();
 
-        var stats = buildMenuStats(cachedMenus);
+        var menus = menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus;
+        var stats = buildMenuStats(menus);
         setHero(
             '菜单与权限',
-            '展示菜单树结构、权限覆盖与层级分布情况。',
-            ['菜单结构', '权限矩阵', '层级统计']
+            '管理菜单树结构，支持新增、编辑、删除、排序与显示隐藏切换。',
+            ['树形结构', '权限管理', '实时同步']
         );
 
         renderOverviewCards([
@@ -784,11 +807,352 @@
             { label: '最大层级', value: stats.maxDepth, icon: 'fas fa-project-diagram', tone: 'tone-danger', note: '当前菜单树深度' }
         ]);
 
-        setPrimaryPanelTitle('菜单结构预览');
-        $('#primary-panel-body').html(renderMenuTreePanel(cachedMenus));
+        setPrimaryPanelTitle('菜单管理');
+        renderMenuManagePanel(menus);
 
-        $('#dynamic-panel-title').text('权限矩阵');
-        renderMenusPanel(stats);
+        $('#dynamic-panel-title').text('操作说明');
+        renderMenuManageHelpPanel();
+    }
+
+    function renderMenuManagePanel(menus) {
+        var headerHtml = '' +
+            '<div class="menu-manage-header mb-3">' +
+            '<button type="button" id="menu-add-root-btn" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i>新增顶级菜单</button>' +
+            '<span class="ml-3 text-muted text-sm">提示：点击菜单名称可展开/折叠子菜单</span>' +
+            '</div>';
+
+        var treeHtml = '<div class="menu-manage-tree">' + buildManageTreeHtml(menus, 1) + '</div>';
+        $('#primary-panel-body').html(headerHtml + treeHtml);
+    }
+
+    function buildManageTreeHtml(nodes, depth) {
+        if (!Array.isArray(nodes) || !nodes.length) {
+            return '';
+        }
+        var html = '<ul class="menu-manage-list">';
+        nodes.forEach(function (node) {
+            var hasChildren = Array.isArray(node.children) && node.children.length > 0;
+            var isExpanded = menuManageState.expandedIds[node.id] !== false;
+            var visibleBadge = node.visible === 0
+                ? '<span class="badge badge-soft-warning ml-2">已隐藏</span>'
+                : '';
+            var indent = (depth - 1) * 20;
+
+            html += '<li class="menu-manage-item" data-id="' + node.id + '" data-parent-id="' + (node.parentId || 0) + '">' +
+                '<div class="menu-manage-row" style="padding-left:' + indent + 'px;">' +
+                '<span class="menu-manage-toggle">';
+            if (hasChildren) {
+                html += '<i class="fas ' + (isExpanded ? 'fa-chevron-down' : 'fa-chevron-right') + ' text-muted"></i>';
+            } else {
+                html += '<span class="menu-manage-placeholder"></span>';
+            }
+            html += '</span>' +
+                '<span class="menu-manage-icon"><i class="' + safeIcon(node.icon) + '"></i></span>' +
+                '<span class="menu-manage-title">' + escapeHtml(node.title || '-') + '</span>' +
+                visibleBadge +
+                '<span class="menu-manage-path ml-2">' + escapeHtml(node.path || '#') + '</span>' +
+                '<span class="menu-manage-perm ml-2">' + escapeHtml(node.permCode || '-') + '</span>' +
+                '<span class="menu-manage-actions ml-auto">';
+            if (hasChildren) {
+                html += '<button class="btn btn-sm btn-outline-success btn-menu-add-child mr-1" title="添加子菜单" data-id="' + node.id + '" data-title="' + escapeHtml(node.title || '') + '"><i class="fas fa-plus"></i></button>';
+            }
+            html += '<button class="btn btn-sm btn-outline-info btn-menu-edit mr-1" title="编辑"><i class="fas fa-edit"></i></button>' +
+                '<button class="btn btn-sm btn-outline-secondary btn-menu-move-up mr-1" title="上移"><i class="fas fa-arrow-up"></i></button>' +
+                '<button class="btn btn-sm btn-outline-secondary btn-menu-move-down mr-1" title="下移"><i class="fas fa-arrow-down"></i></button>' +
+                '<button class="btn btn-sm ' + (node.visible === 0 ? 'btn-outline-success' : 'btn-outline-warning') + ' btn-menu-toggle mr-1" title="' + (node.visible === 0 ? '显示' : '隐藏') + '"><i class="fas ' + (node.visible === 0 ? 'fa-eye' : 'fa-eye-slash') + '"></i></button>' +
+                '<button class="btn btn-sm btn-outline-danger btn-menu-delete" title="删除"><i class="fas fa-trash-alt"></i></button>' +
+                '</span>' +
+                '</div>';
+
+            if (hasChildren && isExpanded) {
+                html += buildManageTreeHtml(node.children, depth + 1);
+            }
+            html += '</li>';
+        });
+        html += '</ul>';
+        return html;
+    }
+
+    function renderMenuManageHelpPanel() {
+        var html = '' +
+            '<div class="status-list">' +
+            '<div class="status-item"><span>新增顶级菜单</span><span class="badge badge-soft-success">点击顶部按钮</span></div>' +
+            '<div class="status-item"><span>新增子菜单</span><span class="badge badge-soft-info">点击父菜单 + 按钮</span></div>' +
+            '<div class="status-item"><span>编辑菜单</span><span class="badge badge-soft-primary">修改名称/路径/权限</span></div>' +
+            '<div class="status-item"><span>排序调整</span><span class="badge badge-soft-warning">上移 / 下移按钮</span></div>' +
+            '<div class="status-item"><span>显示隐藏</span><span class="badge badge-soft-secondary">眼睛图标切换</span></div>' +
+            '<div class="status-item"><span>删除菜单</span><span class="badge badge-soft-danger">无子菜单时可删</span></div>' +
+            '</div>' +
+            '<div class="mt-3 text-muted text-sm">所有保存操作均会实时刷新侧边栏导航菜单，并与后端 perm_code 权限体系保持同步。</div>';
+        $('#dynamic-content').html(html);
+    }
+
+    function bindMenuManageEvents() {
+        $(document).off('click.menuAddRoot').on('click.menuAddRoot', '#menu-add-root-btn', function () {
+            openMenuFormModal(null, 0, '顶级菜单');
+        });
+
+        $(document).off('click.menuAddChild').on('click.menuAddChild', '.btn-menu-add-child', function (e) {
+            e.stopPropagation();
+            var id = Number($(this).data('id'));
+            var title = $(this).data('title') || '父级菜单';
+            openMenuFormModal(null, id, title);
+        });
+
+        $(document).off('click.menuEdit').on('click.menuEdit', '.btn-menu-edit', function (e) {
+            e.stopPropagation();
+            var row = $(this).closest('.menu-manage-item');
+            var id = Number(row.data('id'));
+            var menuData = findMenuInTree(menuManageState.allMenus, id);
+            if (menuData) {
+                openMenuFormModal(menuData, menuData.parentId || 0, getMenuTitleById(menuManageState.allMenus, menuData.parentId));
+            }
+        });
+
+        $(document).off('click.menuToggle').on('click.menuToggle', '.btn-menu-toggle', function (e) {
+            e.stopPropagation();
+            var row = $(this).closest('.menu-manage-item');
+            var id = Number(row.data('id'));
+            toggleMenuVisible(id);
+        });
+
+        $(document).off('click.menuDelete').on('click.menuDelete', '.btn-menu-delete', function (e) {
+            e.stopPropagation();
+            var row = $(this).closest('.menu-manage-item');
+            var id = Number(row.data('id'));
+            var title = row.find('.menu-manage-title').text();
+            confirmDeleteMenu(id, title);
+        });
+
+        $(document).off('click.menuMoveUp').on('click.menuMoveUp', '.btn-menu-move-up', function (e) {
+            e.stopPropagation();
+            var row = $(this).closest('.menu-manage-item');
+            var id = Number(row.data('id'));
+            moveMenu(id, -1);
+        });
+
+        $(document).off('click.menuMoveDown').on('click.menuMoveDown', '.btn-menu-move-down', function (e) {
+            e.stopPropagation();
+            var row = $(this).closest('.menu-manage-item');
+            var id = Number(row.data('id'));
+            moveMenu(id, 1);
+        });
+
+        $(document).off('click.menuToggleExpand').on('click.menuToggleExpand', '.menu-manage-toggle', function (e) {
+            e.stopPropagation();
+            var row = $(this).closest('.menu-manage-item');
+            var id = Number(row.data('id'));
+            menuManageState.expandedIds[id] = menuManageState.expandedIds[id] === false ? true : false;
+            renderMenusScene();
+        });
+
+        $(document).off('submit.menuForm').on('submit.menuForm', '#menu-form', function (e) {
+            e.preventDefault();
+            submitMenuForm();
+        });
+
+        $(document).off('click.menuDeleteConfirm').on('click.menuDeleteConfirm', '#menu-delete-confirm-btn', function () {
+            if (menuManageState.pendingDeleteMenuId) {
+                deleteMenu(menuManageState.pendingDeleteMenuId);
+            }
+            $('#menu-delete-modal').modal('hide');
+            menuManageState.pendingDeleteMenuId = null;
+        });
+    }
+
+    function getMenuTitleById(menus, id) {
+        if (!id || id === 0) return '顶级菜单';
+        var found = findMenuInTree(menus, id);
+        return found ? found.title : '顶级菜单';
+    }
+
+    function findMenuInTree(menus, id) {
+        if (!Array.isArray(menus)) return null;
+        for (var i = 0; i < menus.length; i++) {
+            if (menus[i].id === id) return menus[i];
+            if (Array.isArray(menus[i].children)) {
+                var found = findMenuInTree(menus[i].children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    function openMenuFormModal(menuData, parentId, parentTitle) {
+        $('#mf-error-msg').addClass('d-none').text('');
+
+        if (menuData && menuData.id) {
+            $('#menu-form-label').text('编辑菜单');
+            $('#mf-id').val(menuData.id);
+            $('#mf-parent-id').val(menuData.parentId || 0);
+            $('#mf-parent-title').val(getMenuTitleById(menuManageState.allMenus, menuData.parentId));
+            $('#mf-title').val(menuData.title || '');
+            $('#mf-path').val(menuData.path || '');
+            $('#mf-icon').val(menuData.icon || '');
+            $('#mf-perm-code').val(menuData.permCode || '');
+            $('#mf-sort-order').val(menuData.sortOrder != null ? menuData.sortOrder : 1);
+            $('#mf-visible').val(menuData.visible != null ? String(menuData.visible) : '1');
+        } else {
+            $('#menu-form-label').text('新增菜单');
+            $('#mf-id').val('');
+            $('#mf-parent-id').val(parentId || 0);
+            $('#mf-parent-title').val(parentTitle || '顶级菜单');
+            $('#mf-title').val('');
+            $('#mf-path').val('');
+            $('#mf-icon').val('');
+            $('#mf-perm-code').val('');
+            $('#mf-sort-order').val(1);
+            $('#mf-visible').val('1');
+        }
+        $('#menu-form-modal').modal('show');
+    }
+
+    function showMfError(msg) {
+        $('#mf-error-msg').removeClass('d-none').text(msg);
+    }
+
+    function submitMenuForm() {
+        var id = $('#mf-id').val();
+        var parentId = Number($('#mf-parent-id').val()) || 0;
+        var title = $.trim($('#mf-title').val());
+        var path = $.trim($('#mf-path').val());
+        var icon = $.trim($('#mf-icon').val());
+        var permCode = $.trim($('#mf-perm-code').val());
+        var sortOrder = Number($('#mf-sort-order').val()) || 0;
+        var visible = Number($('#mf-visible').val()) || 0;
+
+        if (!title) { showMfError('菜单名称不能为空'); return; }
+        if (!path) { showMfError('菜单路径不能为空'); return; }
+        if (!permCode) { showMfError('权限码不能为空'); return; }
+
+        var data = {
+            parentId: parentId,
+            title: title,
+            path: path,
+            icon: icon,
+            permCode: permCode,
+            sortOrder: sortOrder,
+            visible: visible
+        };
+
+        var method, url;
+        if (id) {
+            method = 'PUT';
+            url = '/api/menus/' + id;
+        } else {
+            method = 'POST';
+            url = '/api/menus';
+        }
+
+        $.ajax({
+            url: url,
+            method: method,
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0) {
+                    showMfError(resp ? resp.message : '保存失败');
+                    return;
+                }
+                $('#menu-form-modal').modal('hide');
+                AppCommon.showToast(id ? '编辑成功' : '新增成功', 'bg-success');
+                refreshMenusAfterChange();
+            }
+        });
+    }
+
+    function toggleMenuVisible(id) {
+        $.ajax({
+            url: '/api/menus/' + id + '/visible',
+            method: 'PUT',
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0) {
+                    AppCommon.showToast(resp ? resp.message : '操作失败', 'bg-danger');
+                    return;
+                }
+                AppCommon.showToast('状态切换成功', 'bg-success');
+                refreshMenusAfterChange();
+            }
+        });
+    }
+
+    function confirmDeleteMenu(id, title) {
+        menuManageState.pendingDeleteMenuId = id;
+        menuManageState.pendingDeleteMenuTitle = title || '';
+        $('#menu-delete-body').text('确定要删除菜单「' + (title || '') + '」吗？请确保该菜单下没有子菜单。');
+        $('#menu-delete-modal').modal('show');
+    }
+
+    function deleteMenu(id) {
+        $.ajax({
+            url: '/api/menus/' + id,
+            method: 'DELETE',
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0) {
+                    AppCommon.showToast(resp ? resp.message : '删除失败', 'bg-danger');
+                    return;
+                }
+                AppCommon.showToast('删除成功', 'bg-success');
+                refreshMenusAfterChange();
+            }
+        });
+    }
+
+    function moveMenu(id, direction) {
+        var flat = flattenMenusWithSort(menuManageState.allMenus);
+        var target = flat.find(function (m) { return m.id === id; });
+        if (!target) return;
+
+        var siblings = flat.filter(function (m) { return (m.parentId || 0) === (target.parentId || 0); });
+        siblings.sort(function (a, b) { return (a.sortOrder || 0) - (b.sortOrder || 0); });
+
+        var idx = siblings.findIndex(function (m) { return m.id === id; });
+        var swapIdx = idx + direction;
+        if (swapIdx < 0 || swapIdx >= siblings.length) {
+            AppCommon.showToast('已到边界，无法继续移动', 'bg-warning');
+            return;
+        }
+
+        var swapWith = siblings[swapIdx];
+        var items = [
+            { id: id, sortOrder: swapWith.sortOrder },
+            { id: swapWith.id, sortOrder: target.sortOrder }
+        ];
+
+        $.ajax({
+            url: '/api/menus/sort',
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({ items: items }),
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0) {
+                    AppCommon.showToast(resp ? resp.message : '排序失败', 'bg-danger');
+                    return;
+                }
+                AppCommon.showToast('排序更新成功', 'bg-success');
+                refreshMenusAfterChange();
+            }
+        });
+    }
+
+    function flattenMenusWithSort(list, parentId) {
+        var out = [];
+        if (!Array.isArray(list)) return out;
+        list.forEach(function (item) {
+            out.push({
+                id: item.id,
+                parentId: item.parentId || 0,
+                sortOrder: item.sortOrder != null ? item.sortOrder : 0
+            });
+            if (Array.isArray(item.children) && item.children.length) {
+                out = out.concat(flattenMenusWithSort(item.children, item.id));
+            }
+        });
+        return out;
+    }
+
+    function refreshMenusAfterChange() {
+        fetchMenus();
     }
 
     function renderGenericScene() {
