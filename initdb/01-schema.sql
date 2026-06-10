@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS sys_user (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   last_login_at DATETIME NULL,
-  CONSTRAINT chk_user_status CHECK (user_status IN (0, 1))
+  deleted TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT chk_user_status CHECK (user_status IN (0, 1)),
+  CONSTRAINT chk_deleted CHECK (deleted IN (0, 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS sys_menu (

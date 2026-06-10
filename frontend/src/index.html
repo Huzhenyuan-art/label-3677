@@ -212,6 +212,63 @@
     </div>
 </div>
 
+<div id="user-form-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="user-form-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="user-form-label">新增用户</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="user-form" novalidate>
+                <input type="hidden" id="uf-id">
+                <div class="modal-body">
+                    <div id="uf-error-msg" class="alert alert-danger d-none py-2 mb-3" role="alert"></div>
+                    <div class="form-group">
+                        <label for="uf-username">用户名</label>
+                        <input id="uf-username" type="text" class="form-control" maxlength="64" placeholder="请输入用户名" required>
+                    </div>
+                    <div class="form-group" id="uf-password-group">
+                        <label for="uf-password">密码</label>
+                        <input id="uf-password" type="password" class="form-control" maxlength="64" placeholder="请输入密码（至少6位）" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="uf-nickname">昵称</label>
+                        <input id="uf-nickname" type="text" class="form-control" maxlength="64" placeholder="请输入昵称" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="uf-avatar">头像URL</label>
+                        <input id="uf-avatar" type="text" class="form-control" maxlength="255" placeholder="头像链接（选填）">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="user-delete-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="user-delete-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="user-delete-label">删除确认</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">确定要删除该用户吗？此操作为逻辑删除，可恢复。</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="user-delete-confirm-btn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container p-3">
     <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2600">
         <div class="toast-header bg-primary text-white">
