@@ -494,6 +494,7 @@
                 AppCommon.showToast('资料更新成功', 'bg-success');
             },
             complete: function () {
+                AppCommon.hideLoading();
                 $('#profile-save-btn').prop('disabled', false).text('保存修改');
             }
         });
