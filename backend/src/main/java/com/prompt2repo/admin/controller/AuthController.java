@@ -2,6 +2,7 @@ package com.prompt2repo.admin.controller;
 
 import com.prompt2repo.admin.common.ApiResponse;
 import com.prompt2repo.admin.dto.ChangePasswordRequest;
+import com.prompt2repo.admin.dto.LoginAttemptStatusVO;
 import com.prompt2repo.admin.dto.LoginRequest;
 import com.prompt2repo.admin.dto.LoginResponseVO;
 import com.prompt2repo.admin.dto.UnlockRequest;
@@ -9,6 +10,7 @@ import com.prompt2repo.admin.dto.UpdateProfileRequest;
 import com.prompt2repo.admin.dto.UserProfileVO;
 import com.prompt2repo.admin.entity.SysUser;
 import com.prompt2repo.admin.exception.BusinessException;
+import com.prompt2repo.admin.exception.TooManyRequestsException;
 import com.prompt2repo.admin.security.LoginUserDetails;
 import com.prompt2repo.admin.service.LoginAttemptService;
 import com.prompt2repo.admin.service.RedisSessionService;
@@ -51,10 +53,16 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponseVO> login(@Valid @RequestBody LoginRequest loginRequest,
+    public ApiResponse<?> login(@Valid @RequestBody LoginRequest loginRequest,
                                               HttpServletRequest request) {
         String ip = IpUtil.getClientIp(request);
-        loginAttemptService.assertAllow(ip);
+
+        try {
+            loginAttemptService.assertAllow(ip);
+        } catch (TooManyRequestsException ex) {
+            LoginAttemptStatusVO status = loginAttemptService.getAttemptStatus(ip);
+            return ApiResponse.fail(429, "登录尝试过于频繁，账户已被锁定", status);
+        }
 
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -75,12 +83,14 @@ public class AuthController {
             return ApiResponse.success("登录成功", buildLoginResponse(user, token));
         } catch (BadCredentialsException ex) {
             loginAttemptService.recordFailure(ip);
-            throw new BusinessException(401, "用户名或密码错误");
+            LoginAttemptStatusVO status = loginAttemptService.getAttemptStatus(ip);
+            return ApiResponse.fail(401, "用户名或密码错误", status);
         } catch (DisabledException ex) {
             throw new BusinessException(403, "用户已被禁用");
         } catch (AuthenticationException ex) {
             loginAttemptService.recordFailure(ip);
-            throw new BusinessException(401, "登录失败，请检查账号或密码");
+            LoginAttemptStatusVO status = loginAttemptService.getAttemptStatus(ip);
+            return ApiResponse.fail(401, "登录失败，请检查账号或密码", status);
         }
     }
 

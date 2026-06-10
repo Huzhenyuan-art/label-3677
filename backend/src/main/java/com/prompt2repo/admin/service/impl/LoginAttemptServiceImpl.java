@@ -1,5 +1,6 @@
 package com.prompt2repo.admin.service.impl;
 
+import com.prompt2repo.admin.dto.LoginAttemptStatusVO;
 import com.prompt2repo.admin.exception.TooManyRequestsException;
 import com.prompt2repo.admin.service.LoginAttemptService;
 import lombok.RequiredArgsConstructor;
@@ -54,5 +55,43 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     @Override
     public void clear(String ip) {
         stringRedisTemplate.delete(LOGIN_ATTEMPT_PREFIX + ip);
+    }
+
+    @Override
+    public LoginAttemptStatusVO getAttemptStatus(String ip) {
+        String key = LOGIN_ATTEMPT_PREFIX + ip;
+        String value = stringRedisTemplate.opsForValue().get(key);
+
+        if (value == null) {
+            return LoginAttemptStatusVO.builder()
+                    .remainingAttempts(maxAttempts)
+                    .locked(false)
+                    .lockTtlSeconds(0)
+                    .build();
+        }
+
+        int attempts;
+        try {
+            attempts = Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return LoginAttemptStatusVO.builder()
+                    .remainingAttempts(maxAttempts)
+                    .locked(false)
+                    .lockTtlSeconds(0)
+                    .build();
+        }
+
+        boolean locked = attempts >= maxAttempts;
+        long ttlSeconds = 0;
+        if (locked) {
+            Long ttl = stringRedisTemplate.getExpire(key);
+            ttlSeconds = (ttl != null && ttl > 0) ? ttl : 0;
+        }
+
+        return LoginAttemptStatusVO.builder()
+                .remainingAttempts(Math.max(0, maxAttempts - attempts))
+                .locked(locked)
+                .lockTtlSeconds(ttlSeconds)
+                .build();
     }
 }

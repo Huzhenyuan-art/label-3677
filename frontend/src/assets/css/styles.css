@@ -461,6 +461,26 @@ body.lock-mode {
     width: 420px;
 }
 
+.login-attempt-info {
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: #fff8f0;
+    border: 1px solid #f0d6b8;
+}
+
+.attempt-remaining {
+    font-size: 13px;
+    font-weight: 500;
+    color: #8d6b35;
+}
+
+.attempt-countdown {
+    font-size: 14px;
+    font-weight: 600;
+    color: #9f4c4c;
+    margin-top: 6px;
+}
+
 @media (max-width: 767px) {
     .login-box-wide {
         width: 92%;
