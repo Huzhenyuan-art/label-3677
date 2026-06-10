@@ -633,6 +633,11 @@
         $('#cp-new-password').val('');
         $('#cp-confirm-password').val('');
         $('#cp-submit-btn').prop('disabled', false).text('确认修改');
+        $('#cp-error-msg').addClass('d-none').text('');
+    }
+
+    function showCpError(msg) {
+        $('#cp-error-msg').removeClass('d-none').text(msg);
     }
 
     function submitChangePassword() {
@@ -641,34 +646,35 @@
         var confirmPassword = $.trim($('#cp-confirm-password').val());
 
         if (!oldPassword) {
-            AppCommon.showToast('请输入旧密码', 'bg-warning');
+            showCpError('请输入旧密码');
             return;
         }
         if (!newPassword) {
-            AppCommon.showToast('请输入新密码', 'bg-warning');
+            showCpError('请输入新密码');
             return;
         }
         if (newPassword.length < 8) {
-            AppCommon.showToast('新密码长度不能少于8位', 'bg-warning');
+            showCpError('新密码长度不能少于8位');
             return;
         }
         if (!/[a-z]/.test(newPassword)) {
-            AppCommon.showToast('新密码须包含小写字母', 'bg-warning');
+            showCpError('新密码须包含小写字母');
             return;
         }
         if (!/[A-Z]/.test(newPassword)) {
-            AppCommon.showToast('新密码须包含大写字母', 'bg-warning');
+            showCpError('新密码须包含大写字母');
             return;
         }
         if (!/\d/.test(newPassword)) {
-            AppCommon.showToast('新密码须包含数字', 'bg-warning');
+            showCpError('新密码须包含数字');
             return;
         }
         if (newPassword !== confirmPassword) {
-            AppCommon.showToast('两次输入的新密码不一致', 'bg-warning');
+            showCpError('两次输入的新密码不一致');
             return;
         }
 
+        $('#cp-error-msg').addClass('d-none');
         $('#cp-submit-btn').prop('disabled', true).text('提交中...');
 
         $.ajax({
@@ -682,7 +688,7 @@
             }),
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
-                    AppCommon.showToast(resp ? resp.message : '修改失败', 'bg-danger');
+                    showCpError(resp ? resp.message : '修改失败');
                     return;
                 }
                 if (resp.data && resp.data.token) {
@@ -694,6 +700,14 @@
                 }
                 $('#change-password-modal').modal('hide');
                 AppCommon.showToast('密码修改成功，其他设备已下线', 'bg-success');
+            },
+            error: function (xhr) {
+                var response = xhr.responseJSON;
+                if (response && response.message) {
+                    showCpError(response.message);
+                } else {
+                    showCpError('请求失败，请稍后重试');
+                }
             },
             complete: function () {
                 AppCommon.hideLoading();
