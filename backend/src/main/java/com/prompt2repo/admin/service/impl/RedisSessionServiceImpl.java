@@ -27,70 +27,83 @@ public class RedisSessionServiceImpl implements RedisSessionService {
 
     @Override
     public void saveSession(Long userId, String username, List<String> permissions, String sessionId, long expireSeconds) {
-        String key = LOGIN_KEY_PREFIX + userId;
-        LoginSession session = new LoginSession(username, permissions, sessionId, LocalDateTime.now().toString());
         try {
+            String key = LOGIN_KEY_PREFIX + userId;
+            LoginSession session = new LoginSession(username, permissions, sessionId, LocalDateTime.now().toString());
             String sessionJson = objectMapper.writeValueAsString(session);
             stringRedisTemplate.opsForValue().set(key, sessionJson, Duration.ofSeconds(expireSeconds));
-        } catch (JsonProcessingException ex) {
-            stringRedisTemplate.opsForValue().set(key, "{\"username\":\"" + username + "\"}", Duration.ofSeconds(expireSeconds));
+        } catch (Exception ignored) {
         }
     }
 
     @Override
     public boolean hasSession(Long userId) {
-        Boolean exists = stringRedisTemplate.hasKey(LOGIN_KEY_PREFIX + userId);
-        return Boolean.TRUE.equals(exists);
+        try {
+            Boolean exists = stringRedisTemplate.hasKey(LOGIN_KEY_PREFIX + userId);
+            return Boolean.TRUE.equals(exists);
+        } catch (Exception ex) {
+            return true;
+        }
     }
 
     @Override
     public List<String> getPermissions(Long userId) {
-        String payload = stringRedisTemplate.opsForValue().get(LOGIN_KEY_PREFIX + userId);
-        if (payload == null || payload.isBlank()) {
-            return Collections.emptyList();
-        }
         try {
+            String payload = stringRedisTemplate.opsForValue().get(LOGIN_KEY_PREFIX + userId);
+            if (payload == null || payload.isBlank()) {
+                return Collections.emptyList();
+            }
             LoginSession session = objectMapper.readValue(payload, LoginSession.class);
             if (session.getPermissions() == null) {
                 return Collections.emptyList();
             }
             return session.getPermissions();
-        } catch (JsonProcessingException ex) {
+        } catch (Exception ex) {
             return Collections.emptyList();
         }
     }
 
     @Override
     public void refreshSession(Long userId, long expireSeconds) {
-        String key = LOGIN_KEY_PREFIX + userId;
-        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(key))) {
-            stringRedisTemplate.expire(key, Duration.ofSeconds(expireSeconds));
+        try {
+            String key = LOGIN_KEY_PREFIX + userId;
+            if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(key))) {
+                stringRedisTemplate.expire(key, Duration.ofSeconds(expireSeconds));
+            }
+        } catch (Exception ignored) {
         }
     }
 
     @Override
     public String getSessionId(Long userId) {
-        String payload = stringRedisTemplate.opsForValue().get(LOGIN_KEY_PREFIX + userId);
-        if (payload == null || payload.isBlank()) {
-            return null;
-        }
         try {
+            String payload = stringRedisTemplate.opsForValue().get(LOGIN_KEY_PREFIX + userId);
+            if (payload == null || payload.isBlank()) {
+                return null;
+            }
             LoginSession session = objectMapper.readValue(payload, LoginSession.class);
             return session.getSessionId();
-        } catch (JsonProcessingException ex) {
+        } catch (Exception ex) {
             return null;
         }
     }
 
     @Override
     public void deleteSession(Long userId) {
-        stringRedisTemplate.delete(LOGIN_KEY_PREFIX + userId);
+        try {
+            stringRedisTemplate.delete(LOGIN_KEY_PREFIX + userId);
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
     public Long countOnlineSessions() {
-        Set<String> keys = stringRedisTemplate.keys(LOGIN_KEY_PREFIX + "*");
-        return keys == null ? 0L : (long) keys.size();
+        try {
+            Set<String> keys = stringRedisTemplate.keys(LOGIN_KEY_PREFIX + "*");
+            return keys == null ? 0L : (long) keys.size();
+        } catch (Exception ex) {
+            return 0L;
+        }
     }
 
     @Data

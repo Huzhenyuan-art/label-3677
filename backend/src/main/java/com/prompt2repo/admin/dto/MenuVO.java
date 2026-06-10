@@ -25,4 +25,11 @@ public class MenuVO {
 
     @Builder.Default
     private List<MenuVO> children = new ArrayList<>();
+
+    public List<MenuVO> getChildren() {
+        if (children == null) {
+            children = new ArrayList<>();
+        }
+        return children;
+    }
 }
