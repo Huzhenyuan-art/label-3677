@@ -31,6 +31,11 @@
                 </button>
             </li>
             <li class="nav-item">
+                <button id="change-password-btn" type="button" class="btn btn-outline-info top-action-btn mr-2">
+                    <i class="fas fa-key mr-1"></i>改密
+                </button>
+            </li>
+            <li class="nav-item">
                 <button id="logout-btn" type="button" class="btn btn-outline-danger top-action-btn">
                     <i class="fas fa-sign-out-alt mr-1"></i>退出
                 </button>
@@ -150,6 +155,40 @@
                 <button type="button" id="logout-cancel-btn" class="btn btn-secondary" data-dismiss="modal">取消</button>
                 <button type="button" id="logout-confirm-btn" class="btn btn-danger">确认退出</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="change-password-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="change-password-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="change-password-label">修改密码</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="change-password-form" novalidate>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="cp-old-password">旧密码</label>
+                        <input id="cp-old-password" type="password" class="form-control" maxlength="64" placeholder="请输入当前密码" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cp-new-password">新密码</label>
+                        <input id="cp-new-password" type="password" class="form-control" maxlength="64" placeholder="至少8位，含大小写字母和数字" required>
+                        <small class="form-text text-muted">密码须不少于8位，且包含大写字母、小写字母和数字</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="cp-confirm-password">确认新密码</label>
+                        <input id="cp-confirm-password" type="password" class="form-control" maxlength="64" placeholder="请再次输入新密码" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cp-cancel-btn" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" id="cp-submit-btn" class="btn btn-primary">确认修改</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

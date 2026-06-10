@@ -253,6 +253,11 @@ h6 {
     color: #9a5057;
 }
 
+.btn-outline-info {
+    border-color: #b8cfe6;
+    color: #4a6f9e;
+}
+
 .form-control {
     border-radius: 10px;
     border-color: #d8e0ee;

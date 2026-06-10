@@ -59,6 +59,16 @@
             event.preventDefault();
             unlockScreen();
         });
+
+        $(document).off('click.changePassword').on('click.changePassword', '#change-password-btn', function () {
+            resetChangePasswordForm();
+            $('#change-password-modal').modal('show');
+        });
+
+        $('#change-password-form').off('submit.cp').on('submit.cp', function (event) {
+            event.preventDefault();
+            submitChangePassword();
+        });
     }
 
     function showLockScreen() {
@@ -614,6 +624,80 @@
                 $('#lock-screen').addClass('d-none');
                 $('body').removeClass('lock-mode');
                 AppCommon.showToast('解锁成功', 'bg-success');
+            }
+        });
+    }
+
+    function resetChangePasswordForm() {
+        $('#cp-old-password').val('');
+        $('#cp-new-password').val('');
+        $('#cp-confirm-password').val('');
+        $('#cp-submit-btn').prop('disabled', false).text('确认修改');
+    }
+
+    function submitChangePassword() {
+        var oldPassword = $.trim($('#cp-old-password').val());
+        var newPassword = $.trim($('#cp-new-password').val());
+        var confirmPassword = $.trim($('#cp-confirm-password').val());
+
+        if (!oldPassword) {
+            AppCommon.showToast('请输入旧密码', 'bg-warning');
+            return;
+        }
+        if (!newPassword) {
+            AppCommon.showToast('请输入新密码', 'bg-warning');
+            return;
+        }
+        if (newPassword.length < 8) {
+            AppCommon.showToast('新密码长度不能少于8位', 'bg-warning');
+            return;
+        }
+        if (!/[a-z]/.test(newPassword)) {
+            AppCommon.showToast('新密码须包含小写字母', 'bg-warning');
+            return;
+        }
+        if (!/[A-Z]/.test(newPassword)) {
+            AppCommon.showToast('新密码须包含大写字母', 'bg-warning');
+            return;
+        }
+        if (!/\d/.test(newPassword)) {
+            AppCommon.showToast('新密码须包含数字', 'bg-warning');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            AppCommon.showToast('两次输入的新密码不一致', 'bg-warning');
+            return;
+        }
+
+        $('#cp-submit-btn').prop('disabled', true).text('提交中...');
+
+        $.ajax({
+            url: '/api/auth/password',
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                oldPassword: oldPassword,
+                newPassword: newPassword,
+                confirmPassword: confirmPassword
+            }),
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0) {
+                    AppCommon.showToast(resp ? resp.message : '修改失败', 'bg-danger');
+                    return;
+                }
+                if (resp.data && resp.data.token) {
+                    localStorage.setItem(AppCommon.STORAGE_KEYS.TOKEN, resp.data.token);
+                }
+                if (resp.data && resp.data.user) {
+                    localStorage.setItem(AppCommon.STORAGE_KEYS.USER, JSON.stringify(resp.data.user));
+                    syncUserUI(resp.data.user);
+                }
+                $('#change-password-modal').modal('hide');
+                AppCommon.showToast('密码修改成功，其他设备已下线', 'bg-success');
+            },
+            complete: function () {
+                AppCommon.hideLoading();
+                $('#cp-submit-btn').prop('disabled', false).text('确认修改');
             }
         });
     }

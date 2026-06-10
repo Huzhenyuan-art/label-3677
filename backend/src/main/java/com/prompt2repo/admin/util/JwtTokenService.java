@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenService {
@@ -39,15 +40,24 @@ public class JwtTokenService {
     }
 
     public String generateToken(Long userId, String username) {
+        return generateToken(userId, username, UUID.randomUUID().toString());
+    }
+
+    public String generateToken(Long userId, String username, String sessionId) {
         Instant now = Instant.now();
         Instant expireAt = now.plusSeconds(getExpireSeconds());
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim("username", username)
+                .claim("sessionId", sessionId)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(expireAt))
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public String parseSessionId(String token) {
+        return parseClaims(token).get("sessionId", String.class);
     }
 
     public Long parseUserId(String token) {

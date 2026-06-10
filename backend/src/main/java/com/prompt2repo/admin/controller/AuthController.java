@@ -1,6 +1,7 @@
 package com.prompt2repo.admin.controller;
 
 import com.prompt2repo.admin.common.ApiResponse;
+import com.prompt2repo.admin.dto.ChangePasswordRequest;
 import com.prompt2repo.admin.dto.LoginRequest;
 import com.prompt2repo.admin.dto.LoginResponseVO;
 import com.prompt2repo.admin.dto.UnlockRequest;
@@ -65,7 +66,8 @@ public class AuthController {
             var permissions = sysMenuService.listPermissions();
 
             String token = jwtTokenService.generateToken(user.getId(), user.getUsername());
-            redisSessionService.saveSession(user.getId(), user.getUsername(), permissions, jwtTokenService.getExpireSeconds());
+            String sessionId = jwtTokenService.parseSessionId(token);
+            redisSessionService.saveSession(user.getId(), user.getUsername(), permissions, sessionId, jwtTokenService.getExpireSeconds());
             sysUserService.updateLastLogin(user.getId());
             loginAttemptService.clear(ip);
 
@@ -109,6 +111,39 @@ public class AuthController {
         log.info("用户资料更新成功 username={}", currentUser.getUsername());
         SysUser updated = sysUserService.getById(currentUser.getId());
         return ApiResponse.success("资料更新成功", toUserProfile(updated));
+    }
+
+    @PutMapping("/password")
+    public ApiResponse<LoginResponseVO> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                                        Authentication authentication,
+                                                        HttpServletRequest httpRequest) {
+        SysUser currentUser = getCurrentUser(authentication);
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BusinessException(400, "两次输入的新密码不一致");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPassword())) {
+            throw new BusinessException(400, "新密码不能与旧密码相同");
+        }
+
+        if (!passwordEncoder.matches(request.getOldPassword(), currentUser.getPassword())) {
+            throw new BusinessException(401, "旧密码错误");
+        }
+
+        sysUserService.updatePassword(currentUser.getId(), passwordEncoder.encode(request.getNewPassword()));
+
+        redisSessionService.deleteSession(currentUser.getId());
+
+        var permissions = sysMenuService.listPermissions();
+        String newToken = jwtTokenService.generateToken(currentUser.getId(), currentUser.getUsername());
+        String sessionId = jwtTokenService.parseSessionId(newToken);
+        redisSessionService.saveSession(currentUser.getId(), currentUser.getUsername(), permissions, sessionId, jwtTokenService.getExpireSeconds());
+
+        log.info("用户修改密码成功 username={}", currentUser.getUsername());
+
+        SysUser updatedUser = sysUserService.getById(currentUser.getId());
+        return ApiResponse.success("密码修改成功", buildLoginResponse(updatedUser, newToken));
     }
 
     private LoginResponseVO buildLoginResponse(SysUser user, String token) {

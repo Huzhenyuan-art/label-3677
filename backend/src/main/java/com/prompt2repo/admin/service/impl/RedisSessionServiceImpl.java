@@ -26,9 +26,9 @@ public class RedisSessionServiceImpl implements RedisSessionService {
     private final ObjectMapper objectMapper;
 
     @Override
-    public void saveSession(Long userId, String username, List<String> permissions, long expireSeconds) {
+    public void saveSession(Long userId, String username, List<String> permissions, String sessionId, long expireSeconds) {
         String key = LOGIN_KEY_PREFIX + userId;
-        LoginSession session = new LoginSession(username, permissions, LocalDateTime.now().toString());
+        LoginSession session = new LoginSession(username, permissions, sessionId, LocalDateTime.now().toString());
         try {
             String sessionJson = objectMapper.writeValueAsString(session);
             stringRedisTemplate.opsForValue().set(key, sessionJson, Duration.ofSeconds(expireSeconds));
@@ -69,6 +69,25 @@ public class RedisSessionServiceImpl implements RedisSessionService {
     }
 
     @Override
+    public String getSessionId(Long userId) {
+        String payload = stringRedisTemplate.opsForValue().get(LOGIN_KEY_PREFIX + userId);
+        if (payload == null || payload.isBlank()) {
+            return null;
+        }
+        try {
+            LoginSession session = objectMapper.readValue(payload, LoginSession.class);
+            return session.getSessionId();
+        } catch (JsonProcessingException ex) {
+            return null;
+        }
+    }
+
+    @Override
+    public void deleteSession(Long userId) {
+        stringRedisTemplate.delete(LOGIN_KEY_PREFIX + userId);
+    }
+
+    @Override
     public Long countOnlineSessions() {
         Set<String> keys = stringRedisTemplate.keys(LOGIN_KEY_PREFIX + "*");
         return keys == null ? 0L : (long) keys.size();
@@ -80,6 +99,7 @@ public class RedisSessionServiceImpl implements RedisSessionService {
     private static class LoginSession {
         private String username;
         private List<String> permissions;
+        private String sessionId;
         private String loginAt;
     }
 }

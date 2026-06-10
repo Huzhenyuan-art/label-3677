@@ -55,6 +55,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw new BusinessException(401, "登录状态已失效，请重新登录");
             }
 
+            String tokenSessionId = jwtTokenService.parseSessionId(token);
+            String redisSessionId = redisSessionService.getSessionId(userId);
+            if (tokenSessionId == null || !tokenSessionId.equals(redisSessionId)) {
+                throw new BusinessException(401, "会话已变更，请重新登录");
+            }
+
             SysUser user = sysUserService.getById(userId);
             if (user == null || user.getUserStatus() == null || user.getUserStatus() != 1) {
                 throw new BusinessException(401, "用户状态异常，请重新登录");

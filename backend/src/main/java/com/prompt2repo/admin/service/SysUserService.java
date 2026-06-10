@@ -12,4 +12,6 @@ public interface SysUserService extends IService<SysUser> {
     void updateLastLogin(Long userId);
 
     void updateProfile(Long userId, String nickname, String avatar);
+
+    void updatePassword(Long userId, String encodedPassword);
 }

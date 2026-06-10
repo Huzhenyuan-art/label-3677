@@ -37,4 +37,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 .set(SysUser::getAvatar, avatar);
         update(updateWrapper);
     }
+
+    @Override
+    public void updatePassword(Long userId, String encodedPassword) {
+        LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SysUser::getId, userId)
+                .set(SysUser::getPassword, encodedPassword);
+        update(updateWrapper);
+    }
 }
