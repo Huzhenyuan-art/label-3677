@@ -41,6 +41,8 @@
 
     var pendingDeleteUserId = null;
     var idleRemainingInterval = null;
+    var overviewRefreshTimer = null;
+    var OVERVIEW_REFRESH_INTERVAL = 30000;
 
     function startIdleRemainingTimer() {
         stopIdleRemainingTimer();
@@ -265,6 +267,35 @@
         });
     }
 
+    function startOverviewRefresh() {
+        stopOverviewRefresh();
+        overviewRefreshTimer = setInterval(function () {
+            refreshOverviewData();
+        }, OVERVIEW_REFRESH_INTERVAL);
+    }
+
+    function stopOverviewRefresh() {
+        if (overviewRefreshTimer) {
+            clearInterval(overviewRefreshTimer);
+            overviewRefreshTimer = null;
+        }
+    }
+
+    function refreshOverviewData() {
+        $.get('/api/dashboard/overview', function (resp) {
+            if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                return;
+            }
+            var prev = currentOverview;
+            currentOverview = resp.data;
+            if (currentMenu.path === '/dashboard') {
+                smoothUpdateOverviewCards(currentOverview, prev);
+                smoothUpdateChart(currentOverview);
+                smoothUpdateDashboardPanel(currentOverview);
+            }
+        });
+    }
+
     function renderSidebarMenus(menus) {
         var menuRoot = $('#sidebar-menu');
         menuRoot.empty();
@@ -347,6 +378,7 @@
 
     function switchPanel(menu) {
         stopIdleRemainingTimer();
+        stopOverviewRefresh();
 
         currentMenu = {
             title: menu && menu.title ? menu.title : '功能面板',
@@ -360,6 +392,7 @@
 
         if (currentMenu.path === '/dashboard') {
             renderDashboardScene();
+            startOverviewRefresh();
             return;
         }
         if (currentMenu.path === '/profile') {
@@ -1244,6 +1277,76 @@
             html = '<div class="col-12"><div class="small-box tone-info"><div class="inner"><h3>-</h3><p>暂无数据</p></div></div></div>';
         }
         $('#overview-cards').html(html);
+    }
+
+    function smoothUpdateOverviewCards(overview, prev) {
+        var menuStats = buildMenuStats(cachedMenus);
+        var metrics = [
+            { key: 'userCount', value: overview.userCount },
+            { key: 'menuCount', value: overview.menuCount || menuStats.total },
+            { key: 'onlineSessions', value: overview.onlineSessions },
+            { key: 'serverTime', value: overview.serverTime }
+        ];
+
+        var $cards = $('#overview-cards .small-box');
+        if (!$cards.length) {
+            renderDashboardScene();
+            return;
+        }
+
+        $cards.each(function (index) {
+            if (index >= metrics.length) return;
+            var metric = metrics[index];
+            var $h3 = $(this).find('h3');
+            var newValue = metric.key === 'serverTime'
+                ? formatTime(metric.value)
+                : formatCardValue(metric.value);
+
+            var oldValue = metric.key === 'serverTime'
+                ? formatTime(prev ? prev[metric.key] : null)
+                : formatCardValue(prev ? prev[metric.key] : null);
+
+            if (newValue !== oldValue) {
+                $h3.addClass('metric-value-updating');
+                $h3.text(newValue);
+                setTimeout(function () {
+                    $h3.removeClass('metric-value-updating');
+                }, 500);
+            }
+        });
+    }
+
+    function smoothUpdateChart(overview) {
+        if (!overviewChart) return;
+        var menuStats = buildMenuStats(cachedMenus);
+        overviewChart.data.datasets[0].data = [
+            Number(overview.userCount || 0),
+            Number(overview.menuCount || menuStats.total || 0),
+            Number(overview.onlineSessions || 0)
+        ];
+        overviewChart.update('none');
+    }
+
+    function smoothUpdateDashboardPanel(overview) {
+        var menuStats = buildMenuStats(cachedMenus);
+        var $items = $('#dynamic-content .status-item strong');
+        var values = [
+            formatCardValue(overview.userCount),
+            formatCardValue(overview.menuCount || menuStats.total),
+            formatCardValue(overview.onlineSessions)
+        ];
+        $items.each(function (index) {
+            if (index >= values.length) return;
+            var $strong = $(this);
+            var newText = values[index];
+            if ($strong.text() !== newText) {
+                $strong.addClass('metric-value-updating');
+                $strong.text(newText);
+                setTimeout(function () {
+                    $strong.removeClass('metric-value-updating');
+                }, 500);
+            }
+        });
     }
 
     function renderDashboardPanel(overview, menuStats) {

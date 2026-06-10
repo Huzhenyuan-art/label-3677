@@ -181,6 +181,22 @@ h6 {
     color: #6b7892;
 }
 
+.metric-value-updating {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    animation: metricPulse 0.5s ease;
+}
+
+@keyframes metricPulse {
+    0% {
+        opacity: 0.5;
+        transform: translateY(-4px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .small-box .icon > i {
     top: 16px;
     right: 16px;
