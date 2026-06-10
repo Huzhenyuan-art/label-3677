@@ -50,7 +50,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysUser::getId, userId)
                 .set(SysUser::getNickname, nickname)
-                .set(SysUser::getAvatar, avatar));
+                .set(SysUser::getAvatar, avatar);
         update(updateWrapper);
     }
 
@@ -58,7 +58,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void updatePassword(Long userId, String encodedPassword) {
         LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysUser::getId, userId)
-                .set(SysUser::getPassword, encodedPassword));
+                .set(SysUser::getPassword, encodedPassword);
         update(updateWrapper);
     }
 
@@ -108,10 +108,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysUser::getId, userId);
         if (request.getNickname() != null) {
-            updateWrapper.set(SysUser::getNickname, request.getNickname()));
+            updateWrapper.set(SysUser::getNickname, request.getNickname());
         }
         if (request.getAvatar() != null) {
-            updateWrapper.set(SysUser::getAvatar, request.getAvatar()));
+            updateWrapper.set(SysUser::getAvatar, request.getAvatar());
         }
         update(updateWrapper);
     }
