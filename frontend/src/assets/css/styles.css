@@ -538,6 +538,50 @@ body.lock-mode {
     margin-top: 6px;
 }
 
+.idle-timeout-config {
+    background: var(--surface-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.idle-timeout-config h6 {
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.idle-timeout-status {
+    background: #eef3ff;
+    border: 1px solid #d6e5ff;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #355b91 !important;
+}
+
+.idle-timeout-status i {
+    color: #5f79a8;
+}
+
+#idle-remaining-text {
+    font-weight: 500;
+    color: #355b91;
+}
+
+.lock-screen .lock-card {
+    animation: lockSlideIn 0.3s ease-out;
+}
+
+@keyframes lockSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 @media (max-width: 767px) {
     .login-box-wide {
         width: 92%;
@@ -553,5 +597,9 @@ body.lock-mode {
 
     .small-box h3 {
         font-size: 1.45rem;
+    }
+
+    .idle-timeout-config {
+        padding: 12px;
     }
 }

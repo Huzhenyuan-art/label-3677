@@ -4,8 +4,115 @@
     var STORAGE_KEYS = {
         TOKEN: 'admin_token',
         USER: 'admin_user',
-        MENUS: 'admin_menus'
+        MENUS: 'admin_menus',
+        IDLE_TIMEOUT: 'admin_idle_timeout',
+        IDLE_LAST_ACTIVITY: 'admin_idle_last_activity'
     };
+
+    var DEFAULT_IDLE_TIMEOUT = 300;
+    var MIN_IDLE_TIMEOUT = 60;
+    var MAX_IDLE_TIMEOUT = 3600;
+
+    var idleTimer = null;
+    var idleCallback = null;
+    var isIdleMonitoring = false;
+
+    function getIdleTimeout() {
+        var stored = localStorage.getItem(STORAGE_KEYS.IDLE_TIMEOUT);
+        var timeout = stored ? parseInt(stored, 10) : DEFAULT_IDLE_TIMEOUT;
+        if (isNaN(timeout) || timeout < MIN_IDLE_TIMEOUT) {
+            timeout = MIN_IDLE_TIMEOUT;
+        } else if (timeout > MAX_IDLE_TIMEOUT) {
+            timeout = MAX_IDLE_TIMEOUT;
+        }
+        return timeout;
+    }
+
+    function setIdleTimeout(seconds) {
+        var timeout = parseInt(seconds, 10);
+        if (isNaN(timeout) || timeout < MIN_IDLE_TIMEOUT) {
+            timeout = MIN_IDLE_TIMEOUT;
+        } else if (timeout > MAX_IDLE_TIMEOUT) {
+            timeout = MAX_IDLE_TIMEOUT;
+        }
+        localStorage.setItem(STORAGE_KEYS.IDLE_TIMEOUT, String(timeout));
+        if (isIdleMonitoring) {
+            resetIdleTimer();
+        }
+        return timeout;
+    }
+
+    function updateLastActivity() {
+        localStorage.setItem(STORAGE_KEYS.IDLE_LAST_ACTIVITY, String(Date.now()));
+    }
+
+    function getLastActivity() {
+        var stored = localStorage.getItem(STORAGE_KEYS.IDLE_LAST_ACTIVITY);
+        return stored ? parseInt(stored, 10) : Date.now();
+    }
+
+    function resetIdleTimer() {
+        if (idleTimer) {
+            clearTimeout(idleTimer);
+            idleTimer = null;
+        }
+        updateLastActivity();
+        var timeout = getIdleTimeout();
+        if (timeout > 0) {
+            idleTimer = setTimeout(function () {
+                if (typeof idleCallback === 'function') {
+                    idleCallback();
+                }
+            }, timeout * 1000);
+        }
+    }
+
+    function handleUserActivity() {
+        if (isIdleMonitoring) {
+            resetIdleTimer();
+        }
+    }
+
+    function startIdleMonitoring(callback) {
+        if (isIdleMonitoring) {
+            stopIdleMonitoring();
+        }
+        idleCallback = callback;
+        isIdleMonitoring = true;
+
+        var events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        events.forEach(function (event) {
+            document.addEventListener(event, handleUserActivity, true);
+        });
+
+        window.addEventListener('storage', function (e) {
+            if (e.key === STORAGE_KEYS.IDLE_LAST_ACTIVITY) {
+                resetIdleTimer();
+            }
+        });
+
+        resetIdleTimer();
+    }
+
+    function stopIdleMonitoring() {
+        isIdleMonitoring = false;
+        idleCallback = null;
+        if (idleTimer) {
+            clearTimeout(idleTimer);
+            idleTimer = null;
+        }
+        var events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        events.forEach(function (event) {
+            document.removeEventListener(event, handleUserActivity, true);
+        });
+    }
+
+    function getRemainingIdleTime() {
+        var timeout = getIdleTimeout();
+        var lastActivity = getLastActivity();
+        var elapsed = Math.floor((Date.now() - lastActivity) / 1000);
+        return Math.max(0, timeout - elapsed);
+    }
 
     function showLoading() {
         $('#global-loading').removeClass('d-none');
@@ -119,12 +226,22 @@
 
     window.AppCommon = {
         STORAGE_KEYS: STORAGE_KEYS,
+        DEFAULT_IDLE_TIMEOUT: DEFAULT_IDLE_TIMEOUT,
+        MIN_IDLE_TIMEOUT: MIN_IDLE_TIMEOUT,
+        MAX_IDLE_TIMEOUT: MAX_IDLE_TIMEOUT,
         showToast: showToast,
         showLoading: showLoading,
         hideLoading: hideLoading,
         setupAjax: setupAjax,
         clearAuth: clearAuth,
         redirectToLogin: redirectToLogin,
-        parseJson: parseJson
+        parseJson: parseJson,
+        getIdleTimeout: getIdleTimeout,
+        setIdleTimeout: setIdleTimeout,
+        startIdleMonitoring: startIdleMonitoring,
+        stopIdleMonitoring: stopIdleMonitoring,
+        resetIdleTimer: resetIdleTimer,
+        getRemainingIdleTime: getRemainingIdleTime,
+        updateLastActivity: updateLastActivity
     };
 })(window);

@@ -21,6 +21,50 @@
     };
 
     var pendingDeleteUserId = null;
+    var idleRemainingInterval = null;
+
+    function startIdleRemainingTimer() {
+        stopIdleRemainingTimer();
+        updateIdleRemainingText();
+        idleRemainingInterval = setInterval(updateIdleRemainingText, 1000);
+    }
+
+    function stopIdleRemainingTimer() {
+        if (idleRemainingInterval) {
+            clearInterval(idleRemainingInterval);
+            idleRemainingInterval = null;
+        }
+    }
+
+    function updateIdleRemainingText() {
+        var remainingEl = $('#idle-remaining-text');
+        if (!remainingEl.length) {
+            stopIdleRemainingTimer();
+            return;
+        }
+        var remaining = AppCommon.getRemainingIdleTime();
+        var minutes = Math.floor(remaining / 60);
+        var seconds = remaining % 60;
+        var text = '';
+        if (minutes > 0) {
+            text += minutes + ' 分 ';
+        }
+        text += seconds + ' 秒';
+        remainingEl.text('距离自动锁屏还剩：' + text);
+    }
+
+    function saveIdleTimeout() {
+        var selectVal = $('#idle-timeout-select').val();
+        var seconds = parseInt(selectVal, 10);
+        if (isNaN(seconds)) {
+            AppCommon.showToast('请选择有效的超时时间', 'bg-warning');
+            return;
+        }
+        var saved = AppCommon.setIdleTimeout(seconds);
+        var minutes = Math.round(saved / 60);
+        AppCommon.showToast('空闲超时已设置为 ' + minutes + ' 分钟', 'bg-success');
+        updateIdleRemainingText();
+    }
 
     $(function () {
         AppCommon.setupAjax();
@@ -33,11 +77,22 @@
 
         bindEvents();
         loadBaseData();
+        startIdleMonitor();
 
         window.AppDashboard = {
             showLockScreen: showLockScreen
         };
     });
+
+    function startIdleMonitor() {
+        AppCommon.startIdleMonitoring(function () {
+            var lockScreen = $('#lock-screen');
+            if (lockScreen.hasClass('d-none')) {
+                AppCommon.showToast('系统空闲超时，已自动锁定', 'bg-warning');
+                showLockScreen();
+            }
+        });
+    }
 
     function bindEvents() {
         $('#logout-btn').off('click pointerup').on('click pointerup', function (event) {
@@ -52,6 +107,10 @@
 
         $(document).off('click.logoutConfirm').on('click.logoutConfirm', '#logout-confirm-btn', function () {
             $('#logout-confirm-modal').modal('hide');
+            AppCommon.stopIdleMonitoring();
+            stopIdleRemainingTimer();
+            localStorage.removeItem(AppCommon.STORAGE_KEYS.IDLE_TIMEOUT);
+            localStorage.removeItem(AppCommon.STORAGE_KEYS.IDLE_LAST_ACTIVITY);
             AppCommon.clearAuth();
             AppCommon.showToast('已退出登录', 'bg-primary');
             setTimeout(AppCommon.redirectToLogin, 250);
@@ -94,6 +153,7 @@
         $('#unlock-password').val('');
         lockScreen.removeClass('d-none');
         $('body').addClass('lock-mode');
+        AppCommon.stopIdleMonitoring();
     }
 
     function loadBaseData() {
@@ -253,6 +313,8 @@
     }
 
     function switchPanel(menu) {
+        stopIdleRemainingTimer();
+
         currentMenu = {
             title: menu && menu.title ? menu.title : '功能面板',
             path: normalizePath(menu && menu.path),
@@ -820,6 +882,8 @@
 
     function renderProfilePanel(user) {
         var avatarUrl = user.avatar || 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg';
+        var currentTimeout = AppCommon.getIdleTimeout();
+        var timeoutMinutes = Math.round(currentTimeout / 60);
         var html = '' +
             '<div class="text-center mb-3">' +
             '<img id="profile-avatar-preview" src="' + escapeHtml(avatarUrl) + '" class="img-circle elevation-2" width="80" height="80" alt="avatar" onerror="this.src=\'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/img/user2-160x160.jpg\'">' +
@@ -836,7 +900,29 @@
             '<small class="form-text text-muted">输入图片链接后，上方将实时预览头像效果</small>' +
             '</div>' +
             '<button id="profile-save-btn" type="submit" class="btn btn-primary btn-block py-2 font-weight-bold">保存修改</button>' +
-            '</form>';
+            '</form>' +
+            '<hr class="my-4">' +
+            '<div class="idle-timeout-config">' +
+            '<h6 class="font-weight-bold mb-3">自动锁屏设置</h6>' +
+            '<div class="form-group">' +
+            '<label for="idle-timeout-select">空闲超时时间</label>' +
+            '<select id="idle-timeout-select" class="form-control">' +
+            '<option value="60"' + (currentTimeout === 60 ? ' selected' : '') + '>1 分钟</option>' +
+            '<option value="180"' + (currentTimeout === 180 ? ' selected' : '') + '>3 分钟</option>' +
+            '<option value="300"' + (currentTimeout === 300 ? ' selected' : '') + '>5 分钟（默认）</option>' +
+            '<option value="600"' + (currentTimeout === 600 ? ' selected' : '') + '>10 分钟</option>' +
+            '<option value="900"' + (currentTimeout === 900 ? ' selected' : '') + '>15 分钟</option>' +
+            '<option value="1800"' + (currentTimeout === 1800 ? ' selected' : '') + '>30 分钟</option>' +
+            '<option value="3600"' + (currentTimeout === 3600 ? ' selected' : '') + '>60 分钟</option>' +
+            '</select>' +
+            '<small class="form-text text-muted">系统在指定时间内无操作将自动锁定，需输入密码解锁。</small>' +
+            '</div>' +
+            '<div class="idle-timeout-status text-muted text-sm mb-3">' +
+            '<i class="fas fa-clock mr-1"></i>' +
+            '<span id="idle-remaining-text">距离自动锁屏还剩：--</span>' +
+            '</div>' +
+            '<button id="idle-timeout-save-btn" type="button" class="btn btn-outline-primary btn-block py-2">保存超时设置</button>' +
+            '</div>';
         $('#dynamic-content').html(html);
 
         $('#profile-avatar').off('input.profileAvatar').on('input.profileAvatar', function () {
@@ -853,6 +939,12 @@
             event.preventDefault();
             saveProfile();
         });
+
+        $('#idle-timeout-save-btn').off('click.idleSave').on('click.idleSave', function () {
+            saveIdleTimeout();
+        });
+
+        startIdleRemainingTimer();
     }
 
     function saveProfile() {
@@ -1000,6 +1092,10 @@
                 $('#lock-screen').addClass('d-none');
                 $('body').removeClass('lock-mode');
                 AppCommon.showToast('解锁成功', 'bg-success');
+                startIdleMonitor();
+                if (currentMenu) {
+                    switchPanel(currentMenu);
+                }
             }
         });
     }
