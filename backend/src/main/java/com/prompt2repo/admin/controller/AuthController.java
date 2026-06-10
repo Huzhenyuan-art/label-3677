@@ -1,5 +1,6 @@
 package com.prompt2repo.admin.controller;
 
+import com.prompt2repo.admin.annotation.OperationLog;
 import com.prompt2repo.admin.common.ApiResponse;
 import com.prompt2repo.admin.dto.ChangePasswordRequest;
 import com.prompt2repo.admin.dto.LoginAttemptStatusVO;
@@ -53,6 +54,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
+    @OperationLog(module = "认证管理", description = "用户登录", recordResult = false)
     public ApiResponse<?> login(@Valid @RequestBody LoginRequest loginRequest,
                                               HttpServletRequest request) {
         String ip = IpUtil.getClientIp(request);
@@ -95,6 +97,7 @@ public class AuthController {
     }
 
     @PostMapping("/unlock")
+    @OperationLog(module = "认证管理", description = "解锁屏幕", recordResult = false)
     public ApiResponse<String> unlock(@Valid @RequestBody UnlockRequest unlockRequest,
                                       Authentication authentication) {
         SysUser currentUser = getCurrentUser(authentication);
@@ -114,6 +117,7 @@ public class AuthController {
     }
 
     @PutMapping("/profile")
+    @OperationLog(module = "个人中心", description = "更新个人资料")
     public ApiResponse<UserProfileVO> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
                                                      Authentication authentication) {
         SysUser currentUser = getCurrentUser(authentication);
@@ -124,6 +128,7 @@ public class AuthController {
     }
 
     @PutMapping("/password")
+    @OperationLog(module = "个人中心", description = "修改密码", recordParams = false, recordResult = false)
     public ApiResponse<LoginResponseVO> changePassword(@Valid @RequestBody ChangePasswordRequest request,
                                                         Authentication authentication,
                                                         HttpServletRequest httpRequest) {

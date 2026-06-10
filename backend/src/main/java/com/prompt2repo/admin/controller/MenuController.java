@@ -1,5 +1,6 @@
 package com.prompt2repo.admin.controller;
 
+import com.prompt2repo.admin.annotation.OperationLog;
 import com.prompt2repo.admin.common.ApiResponse;
 import com.prompt2repo.admin.dto.MenuCreateRequest;
 import com.prompt2repo.admin.dto.MenuSortRequest;
@@ -41,6 +42,7 @@ public class MenuController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('menu:manage')")
+    @OperationLog(module = "菜单管理", description = "新增菜单")
     public ApiResponse<Long> createMenu(@Valid @RequestBody MenuCreateRequest request) {
         SysMenu menu = sysMenuService.createMenu(request);
         return ApiResponse.success("新增成功", menu.getId());
@@ -48,6 +50,7 @@ public class MenuController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('menu:manage')")
+    @OperationLog(module = "菜单管理", description = "编辑菜单")
     public ApiResponse<Void> updateMenu(@PathVariable Long id,
                                          @Valid @RequestBody MenuUpdateRequest request) {
         sysMenuService.updateMenu(id, request);
@@ -56,6 +59,7 @@ public class MenuController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('menu:manage')")
+    @OperationLog(module = "菜单管理", description = "删除菜单")
     public ApiResponse<Void> deleteMenu(@PathVariable Long id) {
         sysMenuService.deleteMenu(id);
         return ApiResponse.success("删除成功", null);
@@ -63,6 +67,7 @@ public class MenuController {
 
     @PutMapping("/{id}/visible")
     @PreAuthorize("hasAuthority('menu:manage')")
+    @OperationLog(module = "菜单管理", description = "切换菜单显示状态")
     public ApiResponse<Void> toggleVisible(@PathVariable Long id) {
         sysMenuService.toggleVisible(id);
         return ApiResponse.success("状态切换成功", null);
@@ -70,6 +75,7 @@ public class MenuController {
 
     @PutMapping("/sort")
     @PreAuthorize("hasAuthority('menu:manage')")
+    @OperationLog(module = "菜单管理", description = "调整菜单排序")
     public ApiResponse<Void> updateSort(@Valid @RequestBody MenuSortRequest request) {
         sysMenuService.updateSort(request);
         return ApiResponse.success("排序更新成功", null);

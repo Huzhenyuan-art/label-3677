@@ -10,7 +10,9 @@ VALUES
   (2, 0, '系统管理', '#', 'fas fa-cogs', 'system:root', 2, 1),
   (3, 2, '用户信息', '/profile', 'far fa-user', 'user:view', 1, 1),
   (4, 2, '菜单权限', '/menus', 'fas fa-list', 'menu:manage', 2, 1),
-  (5, 2, '用户管理', '/users', 'fas fa-users-cog', 'user:manage', 3, 1)
+  (5, 2, '用户管理', '/users', 'fas fa-users-cog', 'user:manage', 3, 1),
+  (6, 0, '日志审计', '#', 'fas fa-history', 'log:root', 3, 1),
+  (7, 6, '操作日志', '/operation-logs', 'fas fa-clipboard-list', 'operationLog:view', 1, 1)
 ON DUPLICATE KEY UPDATE
   title = VALUES(title),
   path = VALUES(path),

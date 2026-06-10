@@ -1,6 +1,7 @@
 package com.prompt2repo.admin.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.prompt2repo.admin.annotation.OperationLog;
 import com.prompt2repo.admin.common.ApiResponse;
 import com.prompt2repo.admin.dto.UserCreateRequest;
 import com.prompt2repo.admin.dto.UserPageQuery;
@@ -35,6 +36,7 @@ public class SysUserController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('user:manage')")
+    @OperationLog(module = "用户管理", description = "新增用户")
     public ApiResponse<Long> createUser(@Valid @RequestBody UserCreateRequest request) {
         Long userId = sysUserService.createUser(request);
         return ApiResponse.success("新增成功", userId);
@@ -42,6 +44,7 @@ public class SysUserController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('user:manage')")
+    @OperationLog(module = "用户管理", description = "编辑用户")
     public ApiResponse<Void> updateUser(@PathVariable Long id,
                                          @Valid @RequestBody UserUpdateRequest request) {
         sysUserService.updateUser(id, request);
@@ -50,6 +53,7 @@ public class SysUserController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAuthority('user:manage')")
+    @OperationLog(module = "用户管理", description = "切换用户状态")
     public ApiResponse<Void> toggleStatus(@PathVariable Long id) {
         sysUserService.toggleUserStatus(id);
         return ApiResponse.success("状态切换成功", null);
@@ -57,6 +61,7 @@ public class SysUserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('user:manage')")
+    @OperationLog(module = "用户管理", description = "删除用户")
     public ApiResponse<Void> deleteUser(@PathVariable Long id) {
         sysUserService.deleteUser(id);
         return ApiResponse.success("删除成功", null);

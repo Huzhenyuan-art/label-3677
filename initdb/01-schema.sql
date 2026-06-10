@@ -31,3 +31,25 @@ CREATE TABLE IF NOT EXISTS sys_menu (
   CONSTRAINT chk_menu_visible CHECK (visible IN (0, 1)),
   INDEX idx_parent_sort (parent_id, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS sys_operation_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  operator_id BIGINT NULL COMMENT '操作人ID',
+  operator_username VARCHAR(64) NULL COMMENT '操作人用户名',
+  operator_nickname VARCHAR(64) NULL COMMENT '操作人昵称',
+  operation_module VARCHAR(64) NOT NULL COMMENT '操作模块',
+  operation_desc VARCHAR(255) NOT NULL COMMENT '操作描述',
+  request_method VARCHAR(16) NOT NULL COMMENT '请求方法（GET/POST/PUT/DELETE）',
+  request_path VARCHAR(255) NOT NULL COMMENT '请求路径',
+  request_params TEXT NULL COMMENT '请求参数摘要（JSON格式）',
+  response_result TEXT NULL COMMENT '响应结果摘要（JSON格式）',
+  execution_time BIGINT NOT NULL DEFAULT 0 COMMENT '执行耗时（毫秒）',
+  success TINYINT NOT NULL DEFAULT 1 COMMENT '是否成功（0-失败，1-成功）',
+  error_message TEXT NULL COMMENT '错误信息',
+  client_ip VARCHAR(64) NULL COMMENT '客户端IP',
+  user_agent VARCHAR(512) NULL COMMENT '用户代理',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  INDEX idx_operator (operator_id),
+  INDEX idx_created_at (created_at),
+  INDEX idx_module (operation_module)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='系统操作日志表';
