@@ -1,9 +1,11 @@
 package com.prompt2repo.admin.security;
 
+import com.prompt2repo.admin.entity.SysRole;
 import com.prompt2repo.admin.entity.SysUser;
 import com.prompt2repo.admin.exception.BusinessException;
 import com.prompt2repo.admin.service.RedisSessionService;
 import com.prompt2repo.admin.service.SysMenuService;
+import com.prompt2repo.admin.service.SysRoleService;
 import com.prompt2repo.admin.service.SysUserService;
 import com.prompt2repo.admin.util.JwtTokenService;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final SysUserService sysUserService;
     private final SysMenuService sysMenuService;
+    private final SysRoleService sysRoleService;
     private final RedisSessionService redisSessionService;
 
     @Override
@@ -66,16 +70,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw new BusinessException(401, "用户状态异常，请重新登录");
             }
 
+            boolean isSuperAdmin = sysRoleService.isSuperAdmin(userId);
+            List<SysRole> roles = sysRoleService.listRolesByUserId(userId).stream()
+                    .map(vo -> {
+                        SysRole r = new SysRole();
+                        r.setId(vo.getId());
+                        r.setRoleCode(vo.getRoleCode());
+                        r.setRoleName(vo.getRoleName());
+                        return r;
+                    })
+                    .collect(Collectors.toList());
+
             List<String> permissions = redisSessionService.getPermissions(userId);
-            if (permissions.isEmpty()) {
-                permissions = sysMenuService.listPermissions();
+            if (permissions == null || permissions.isEmpty()) {
+                if (isSuperAdmin) {
+                    permissions = sysMenuService.listPermissions();
+                } else {
+                    permissions = sysRoleService.listPermCodesByUserId(userId);
+                }
             }
 
-            List<SimpleGrantedAuthority> authorities = permissions.stream()
+            List<SimpleGrantedAuthority> authorities = (permissions != null ? permissions : Collections.<String>emptyList())
+                    .stream()
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
 
-            LoginUserDetails principal = new LoginUserDetails(user, authorities);
+            LoginUserDetails principal = new LoginUserDetails(user, roles, isSuperAdmin, authorities);
             UsernamePasswordAuthenticationToken authenticationToken =
                     new UsernamePasswordAuthenticationToken(principal, null, authorities);
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

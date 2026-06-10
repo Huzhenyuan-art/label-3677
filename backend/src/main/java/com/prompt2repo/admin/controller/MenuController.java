@@ -7,9 +7,11 @@ import com.prompt2repo.admin.dto.MenuSortRequest;
 import com.prompt2repo.admin.dto.MenuUpdateRequest;
 import com.prompt2repo.admin.dto.MenuVO;
 import com.prompt2repo.admin.entity.SysMenu;
+import com.prompt2repo.admin.security.LoginUserDetails;
 import com.prompt2repo.admin.service.SysMenuService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,12 +32,16 @@ public class MenuController {
     private final SysMenuService sysMenuService;
 
     @GetMapping
-    public ApiResponse<List<MenuVO>> listMenus() {
-        return ApiResponse.success(sysMenuService.listMenuTree());
+    public ApiResponse<List<MenuVO>> listMenus(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof LoginUserDetails)) {
+            return ApiResponse.success(sysMenuService.listMenuTree());
+        }
+        LoginUserDetails principal = (LoginUserDetails) authentication.getPrincipal();
+        return ApiResponse.success(sysMenuService.listMenuTreeByUserId(principal.getUser().getId()));
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasAuthority('menu:manage')")
+    @PreAuthorize("hasAuthority('menu:manage') or hasAuthority('role:manage')")
     public ApiResponse<List<MenuVO>> listAllMenus() {
         return ApiResponse.success(sysMenuService.listAllMenuTree());
     }

@@ -354,6 +354,120 @@
     </div>
 </div>
 
+<div id="role-form-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="role-form-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="role-form-label">新增角色</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="role-form" novalidate>
+                <input type="hidden" id="rf-id">
+                <div class="modal-body">
+                    <div id="rf-error-msg" class="alert alert-danger d-none py-2 mb-3" role="alert"></div>
+                    <div class="form-group">
+                        <label for="rf-role-code">角色编码 <span class="text-danger">*</span></label>
+                        <input id="rf-role-code" type="text" class="form-control" maxlength="64" placeholder="如 SUPER_ADMIN" required>
+                        <small class="form-text text-muted">英文编码，系统内唯一</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="rf-role-name">角色名称 <span class="text-danger">*</span></label>
+                        <input id="rf-role-name" type="text" class="form-control" maxlength="64" placeholder="如 超级管理员" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rf-description">角色描述</label>
+                        <textarea id="rf-description" class="form-control" maxlength="255" rows="2" placeholder="选填"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="rf-sort-order">排序值</label>
+                        <input id="rf-sort-order" type="number" class="form-control" min="0" value="1">
+                        <small class="form-text text-muted">数值越小越靠前</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="rf-role-status">角色状态</label>
+                        <select id="rf-role-status" class="form-control">
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="role-delete-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="role-delete-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="role-delete-label">删除确认</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="role-delete-body">确定要删除该角色吗？</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="role-delete-confirm-btn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="role-menu-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="role-menu-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="role-menu-label">分配菜单权限</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="rm-role-info" class="mb-3 text-muted"></div>
+                <div id="rm-error-msg" class="alert alert-danger d-none py-2 mb-3" role="alert"></div>
+                <div class="mb-2">
+                    <button type="button" id="rm-check-all" class="btn btn-outline-secondary btn-sm mr-2">全选</button>
+                    <button type="button" id="rm-uncheck-all" class="btn btn-outline-secondary btn-sm">全不选</button>
+                </div>
+                <div id="rm-menu-tree" class="menu-assign-tree border rounded p-3" style="max-height: 420px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="rm-save-btn" class="btn btn-primary">保存分配</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="user-role-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="user-role-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="user-role-label">分配用户角色</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="ur-user-info" class="mb-3 text-muted"></div>
+                <div id="ur-error-msg" class="alert alert-danger d-none py-2 mb-3" role="alert"></div>
+                <div id="ur-role-list" class="role-assign-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="ur-save-btn" class="btn btn-primary">保存分配</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="operation-log-detail-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="operation-log-detail-label" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
         <div class="modal-content">

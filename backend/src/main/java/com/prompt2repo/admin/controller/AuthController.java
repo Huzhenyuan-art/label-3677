@@ -16,6 +16,7 @@ import com.prompt2repo.admin.security.LoginUserDetails;
 import com.prompt2repo.admin.service.LoginAttemptService;
 import com.prompt2repo.admin.service.RedisSessionService;
 import com.prompt2repo.admin.service.SysMenuService;
+import com.prompt2repo.admin.service.SysRoleService;
 import com.prompt2repo.admin.service.SysUserService;
 import com.prompt2repo.admin.util.IpUtil;
 import com.prompt2repo.admin.util.JwtTokenService;
@@ -48,6 +49,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final SysUserService sysUserService;
     private final SysMenuService sysMenuService;
+    private final SysRoleService sysRoleService;
     private final RedisSessionService redisSessionService;
     private final LoginAttemptService loginAttemptService;
     private final JwtTokenService jwtTokenService;
@@ -73,7 +75,9 @@ public class AuthController {
 
             LoginUserDetails userDetails = (LoginUserDetails) authentication.getPrincipal();
             SysUser user = userDetails.getUser();
-            var permissions = sysMenuService.listPermissions();
+            var permissions = userDetails.isSuperAdmin()
+                    ? sysMenuService.listPermissions()
+                    : sysRoleService.listPermCodesByUserId(user.getId());
 
             String token = jwtTokenService.generateToken(user.getId(), user.getUsername());
             String sessionId = jwtTokenService.parseSessionId(token);
@@ -150,7 +154,10 @@ public class AuthController {
 
         redisSessionService.deleteSession(currentUser.getId());
 
-        var permissions = sysMenuService.listPermissions();
+        boolean superAdmin = sysRoleService.isSuperAdmin(currentUser.getId());
+        var permissions = superAdmin
+                ? sysMenuService.listPermissions()
+                : sysRoleService.listPermCodesByUserId(currentUser.getId());
         String newToken = jwtTokenService.generateToken(currentUser.getId(), currentUser.getUsername());
         String sessionId = jwtTokenService.parseSessionId(newToken);
         redisSessionService.saveSession(currentUser.getId(), currentUser.getUsername(), permissions, sessionId, jwtTokenService.getExpireSeconds());
@@ -166,7 +173,7 @@ public class AuthController {
                 .token(token)
                 .expireAt(LocalDateTime.now().plusSeconds(jwtTokenService.getExpireSeconds()))
                 .user(toUserProfile(user))
-                .menus(sysMenuService.listMenuTree())
+                .menus(sysMenuService.listMenuTreeByUserId(user.getId()))
                 .build();
     }
 

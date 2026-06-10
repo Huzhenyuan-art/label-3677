@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.prompt2repo.admin.dto.RoleVO;
 import com.prompt2repo.admin.dto.UserCreateRequest;
 import com.prompt2repo.admin.dto.UserPageQuery;
 import com.prompt2repo.admin.dto.UserUpdateRequest;
@@ -12,21 +13,22 @@ import com.prompt2repo.admin.dto.UserVO;
 import com.prompt2repo.admin.entity.SysUser;
 import com.prompt2repo.admin.exception.BusinessException;
 import com.prompt2repo.admin.mapper.SysUserMapper;
+import com.prompt2repo.admin.service.SysRoleService;
 import com.prompt2repo.admin.service.SysUserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
 
     private final PasswordEncoder passwordEncoder;
-
-    public SysUserServiceImpl(PasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
-    }
+    private final SysRoleService sysRoleService;
 
     @Override
     public Optional<SysUser> findByUsername(String username) {
@@ -48,7 +50,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysUser::getId, userId)
                 .set(SysUser::getNickname, nickname)
-                .set(SysUser::getAvatar, avatar);
+                .set(SysUser::getAvatar, avatar));
         update(updateWrapper);
     }
 
@@ -56,7 +58,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void updatePassword(Long userId, String encodedPassword) {
         LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysUser::getId, userId)
-                .set(SysUser::getPassword, encodedPassword);
+                .set(SysUser::getPassword, encodedPassword));
         update(updateWrapper);
     }
 
@@ -106,10 +108,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysUser::getId, userId);
         if (request.getNickname() != null) {
-            updateWrapper.set(SysUser::getNickname, request.getNickname());
+            updateWrapper.set(SysUser::getNickname, request.getNickname()));
         }
         if (request.getAvatar() != null) {
-            updateWrapper.set(SysUser::getAvatar, request.getAvatar());
+            updateWrapper.set(SysUser::getAvatar, request.getAvatar()));
         }
         update(updateWrapper);
     }
@@ -138,6 +140,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     private UserVO toUserVO(SysUser user) {
+        List<RoleVO> roles = sysRoleService.listRolesByUserId(user.getId());
         return UserVO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -147,6 +150,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .lastLoginAt(user.getLastLoginAt())
+                .roles(roles)
                 .build();
     }
 }

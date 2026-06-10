@@ -32,6 +32,40 @@ CREATE TABLE IF NOT EXISTS sys_menu (
   INDEX idx_parent_sort (parent_id, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS sys_role (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  role_code VARCHAR(64) NOT NULL UNIQUE,
+  role_name VARCHAR(64) NOT NULL,
+  description VARCHAR(255) NULL,
+  role_status TINYINT NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT chk_role_status CHECK (role_status IN (0, 1)),
+  CONSTRAINT chk_role_deleted CHECK (deleted IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='系统角色表';
+
+CREATE TABLE IF NOT EXISTS sys_user_role (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  role_id BIGINT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_role (user_id, role_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_role_id (role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户角色关联表';
+
+CREATE TABLE IF NOT EXISTS sys_role_menu (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  role_id BIGINT NOT NULL,
+  menu_id BIGINT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_role_menu (role_id, menu_id),
+  INDEX idx_role_id (role_id),
+  INDEX idx_menu_id (menu_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='角色菜单关联表';
+
 CREATE TABLE IF NOT EXISTS sys_operation_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   operator_id BIGINT NULL COMMENT '操作人ID',

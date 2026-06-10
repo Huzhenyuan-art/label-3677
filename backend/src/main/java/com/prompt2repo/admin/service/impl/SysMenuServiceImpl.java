@@ -10,20 +10,26 @@ import com.prompt2repo.admin.entity.SysMenu;
 import com.prompt2repo.admin.exception.BusinessException;
 import com.prompt2repo.admin.mapper.SysMenuMapper;
 import com.prompt2repo.admin.service.SysMenuService;
+import com.prompt2repo.admin.service.SysRoleService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
 
+    private final SysRoleService sysRoleService;
     @Override
     public List<SysMenu> listVisibleMenus() {
         LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
@@ -36,6 +42,42 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     public List<MenuVO> listMenuTree() {
         return buildMenuTree(listVisibleMenus());
+    }
+
+    @Override
+    public List<MenuVO> listMenuTreeByUserId(Long userId) {
+        if (sysRoleService.isSuperAdmin(userId)) {
+            return listMenuTree();
+        }
+        List<Long> menuIds = sysRoleService.listMenuIdsByUserId(userId);
+        if (menuIds == null || menuIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Set<Long> menuIdSet = new HashSet<>(menuIds);
+        Set<Long> allMenuIds = new HashSet<>(menuIdSet);
+
+        List<SysMenu> allVisible = listVisibleMenus();
+        Map<Long, SysMenu> menuMap = allVisible.stream()
+                .collect(Collectors.toMap(SysMenu::getId, m -> m));
+
+        for (Long menuId : menuIdSet) {
+            Long current = menuId;
+            while (current != null && current > 0) {
+                allMenuIds.add(current);
+                SysMenu menu = menuMap.get(current);
+                if (menu == null) {
+                    break;
+                }
+                current = menu.getParentId();
+            }
+        }
+
+        List<SysMenu> filtered = allVisible.stream()
+                .filter(m -> allMenuIds.contains(m.getId()))
+                .collect(Collectors.toList());
+
+        return buildMenuTree(filtered);
     }
 
     @Override

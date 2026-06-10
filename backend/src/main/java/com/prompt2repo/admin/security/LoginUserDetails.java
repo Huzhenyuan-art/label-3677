@@ -1,20 +1,28 @@
 package com.prompt2repo.admin.security;
 
+import com.prompt2repo.admin.entity.SysRole;
 import com.prompt2repo.admin.entity.SysUser;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 @Getter
 public class LoginUserDetails implements UserDetails {
 
     private final SysUser user;
+    private final List<SysRole> roles;
+    private final boolean superAdmin;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public LoginUserDetails(SysUser user, Collection<? extends GrantedAuthority> authorities) {
+    public LoginUserDetails(SysUser user, List<SysRole> roles, boolean superAdmin,
+                            Collection<? extends GrantedAuthority> authorities) {
         this.user = user;
+        this.roles = roles != null ? roles : Collections.emptyList();
+        this.superAdmin = superAdmin;
         this.authorities = authorities;
     }
 
