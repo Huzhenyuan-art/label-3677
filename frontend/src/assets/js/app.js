@@ -852,11 +852,9 @@
                 visibleBadge +
                 '<span class="menu-manage-path ml-2">' + escapeHtml(node.path || '#') + '</span>' +
                 '<span class="menu-manage-perm ml-2">' + escapeHtml(node.permCode || '-') + '</span>' +
-                '<span class="menu-manage-actions ml-auto">';
-            if (hasChildren) {
-                html += '<button class="btn btn-sm btn-outline-success btn-menu-add-child mr-1" title="添加子菜单" data-id="' + node.id + '" data-title="' + escapeHtml(node.title || '') + '"><i class="fas fa-plus"></i></button>';
-            }
-            html += '<button class="btn btn-sm btn-outline-info btn-menu-edit mr-1" title="编辑"><i class="fas fa-edit"></i></button>' +
+                '<span class="menu-manage-actions ml-auto">' +
+                '<button class="btn btn-sm btn-outline-success btn-menu-add-child mr-1" title="添加子菜单" data-id="' + node.id + '" data-title="' + escapeHtml(node.title || '') + '"><i class="fas fa-plus"></i></button>' +
+                '<button class="btn btn-sm btn-outline-info btn-menu-edit mr-1" title="编辑"><i class="fas fa-edit"></i></button>' +
                 '<button class="btn btn-sm btn-outline-secondary btn-menu-move-up mr-1" title="上移"><i class="fas fa-arrow-up"></i></button>' +
                 '<button class="btn btn-sm btn-outline-secondary btn-menu-move-down mr-1" title="下移"><i class="fas fa-arrow-down"></i></button>' +
                 '<button class="btn btn-sm ' + (node.visible === 0 ? 'btn-outline-success' : 'btn-outline-warning') + ' btn-menu-toggle mr-1" title="' + (node.visible === 0 ? '显示' : '隐藏') + '"><i class="fas ' + (node.visible === 0 ? 'fa-eye' : 'fa-eye-slash') + '"></i></button>' +
