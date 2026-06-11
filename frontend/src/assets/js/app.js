@@ -298,6 +298,17 @@
             event.preventDefault();
             submitChangePassword();
         });
+
+        $(document).off('click.breadcrumbHome').on('click.breadcrumbHome', '#breadcrumb-home', function (event) {
+            event.preventDefault();
+            handleBreadcrumbClick('/dashboard');
+        });
+
+        $(document).off('click.breadcrumbLink').on('click.breadcrumbLink', '.breadcrumb-link', function (event) {
+            event.preventDefault();
+            var path = $(this).attr('data-menu-path');
+            handleBreadcrumbClick(path);
+        });
     }
 
     function showLockScreen() {
@@ -347,6 +358,7 @@
         cachedMenus = menus;
         renderSidebarMenus(menus);
         syncActiveMenuByPath(currentMenu.path);
+        renderBreadcrumb(currentMenu);
     }
 
     function fetchUser() {
@@ -371,6 +383,7 @@
             localStorage.setItem(AppCommon.STORAGE_KEYS.MENUS, JSON.stringify(resp.data));
             renderSidebarMenus(resp.data);
             syncActiveMenuByPath(currentMenu.path);
+            renderBreadcrumb(currentMenu);
             if (currentMenu.path === '/menus') {
                 fetchAllMenusForManage();
             }
@@ -548,6 +561,106 @@
         setActiveMenu(target);
     }
 
+    function findMenuChainByPath(path, menus, chain) {
+        chain = chain || [];
+        if (!Array.isArray(menus)) {
+            return null;
+        }
+        for (var i = 0; i < menus.length; i++) {
+            var menu = menus[i];
+            var currentChain = chain.concat([menu]);
+            if (menu.path === path) {
+                return currentChain;
+            }
+            if (Array.isArray(menu.children) && menu.children.length) {
+                var found = findMenuChainByPath(path, menu.children, currentChain);
+                if (found) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    function findMenuByPath(path, menus) {
+        if (!Array.isArray(menus)) {
+            return null;
+        }
+        for (var i = 0; i < menus.length; i++) {
+            var menu = menus[i];
+            if (menu.path === path) {
+                return menu;
+            }
+            if (Array.isArray(menu.children) && menu.children.length) {
+                var found = findMenuByPath(path, menu.children);
+                if (found) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    function renderBreadcrumb(menu) {
+        var nav = $('#breadcrumb-nav');
+        if (!nav.length) {
+            return;
+        }
+
+        var targetPath = normalizePath(menu && menu.path);
+        var chain = findMenuChainByPath(targetPath, cachedMenus) || [];
+
+        var realChain = [];
+        chain.forEach(function (item) {
+            if (item.path && item.path !== '#') {
+                realChain.push(item);
+            }
+        });
+
+        if (realChain.length === 0 && menu) {
+            realChain.push({
+                title: menu.title || '功能页面',
+                path: targetPath
+            });
+        }
+
+        var html = '';
+        html += '<li class="breadcrumb-item"><a href="#" id="breadcrumb-home" data-menu-path="/dashboard"><i class="fas fa-home mr-1"></i>首页</a></li>';
+
+        if (realChain.length <= 1) {
+            var singleTitle = realChain.length ? (realChain[0].title || '仪表盘') : (menu && menu.title ? menu.title : '仪表盘');
+            html += '<li id="page-subtitle" class="breadcrumb-item active">' + escapeHtml(singleTitle) + '</li>';
+        } else {
+            for (var i = 0; i < realChain.length; i++) {
+                var item = realChain[i];
+                var isLast = (i === realChain.length - 1);
+                if (isLast) {
+                    html += '<li id="page-subtitle" class="breadcrumb-item active">' + escapeHtml(item.title || '-') + '</li>';
+                } else {
+                    var itemPath = normalizePath(item.path);
+                    html += '<li class="breadcrumb-item"><a href="#" class="breadcrumb-link" data-menu-path="' + escapeHtml(itemPath) + '">' + escapeHtml(item.title || '-') + '</a></li>';
+                }
+            }
+        }
+
+        nav.html(html);
+    }
+
+    function handleBreadcrumbClick(path) {
+        if (!path) {
+            path = '/dashboard';
+        }
+        var targetMenu = findMenuByPath(path, cachedMenus);
+        if (!targetMenu) {
+            targetMenu = {
+                title: '首页',
+                path: '/dashboard',
+                permCode: 'dashboard:view'
+            };
+        }
+        switchPanel(targetMenu);
+    }
+
     function switchPanel(menu) {
         stopIdleRemainingTimer();
         stopOverviewRefresh();
@@ -561,6 +674,7 @@
 
         $('#page-title').text(currentMenu.title);
         $('#page-subtitle').text(currentMenu.title);
+        renderBreadcrumb(menu);
         syncActiveMenuByPath(currentMenu.path);
 
         if (currentMenu.path === '/dashboard') {
