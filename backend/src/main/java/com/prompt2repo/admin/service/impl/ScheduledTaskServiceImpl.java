@@ -73,7 +73,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
     public ScheduledTaskVO updateTask(Long id, ScheduledTaskUpdateRequest request) {
         ScheduledTask task = getById(id);
         if (task == null) {
-            throw new BusinessException("任务不存在");
+            throw new BusinessException(404, "任务不存在");
         }
         boolean wasRunning = task.getTaskStatus() == 1;
         if (request.getTaskName() != null) task.setTaskName(request.getTaskName());
@@ -99,7 +99,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
     public void deleteTask(Long id) {
         ScheduledTask task = getById(id);
         if (task == null) {
-            throw new BusinessException("任务不存在");
+            throw new BusinessException(404, "任务不存在");
         }
         if (task.getTaskStatus() == 1) {
             dynamicTaskScheduler.removeTask(id);
@@ -113,10 +113,10 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
     public void startTask(Long id) {
         ScheduledTask task = getById(id);
         if (task == null) {
-            throw new BusinessException("任务不存在");
+            throw new BusinessException(404, "任务不存在");
         }
         if (task.getTaskStatus() == 1) {
-            throw new BusinessException("任务已在运行中");
+            throw new BusinessException(400, "任务已在运行中");
         }
         task.setTaskStatus(1);
         updateById(task);
@@ -128,10 +128,10 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
     public void pauseTask(Long id) {
         ScheduledTask task = getById(id);
         if (task == null) {
-            throw new BusinessException("任务不存在");
+            throw new BusinessException(404, "任务不存在");
         }
         if (task.getTaskStatus() == 0) {
-            throw new BusinessException("任务已暂停");
+            throw new BusinessException(400, "任务已暂停");
         }
         task.setTaskStatus(0);
         updateById(task);
@@ -142,7 +142,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
     public ScheduledTaskVO getTaskDetail(Long id) {
         ScheduledTask task = getById(id);
         if (task == null) {
-            throw new BusinessException("任务不存在");
+            throw new BusinessException(404, "任务不存在");
         }
         return toVO(task);
     }
