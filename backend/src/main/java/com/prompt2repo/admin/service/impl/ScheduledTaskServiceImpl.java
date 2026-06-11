@@ -15,7 +15,7 @@ import com.prompt2repo.admin.scheduler.DynamicTaskScheduler;
 import com.prompt2repo.admin.service.ScheduledTaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +25,11 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, ScheduledTask> implements ScheduledTaskService {
 
-    @Lazy
-    private final DynamicTaskScheduler dynamicTaskScheduler;
+    private final ObjectProvider<DynamicTaskScheduler> dynamicTaskSchedulerProvider;
+
+    private DynamicTaskScheduler getScheduler() {
+        return dynamicTaskSchedulerProvider.getIfAvailable();
+    }
 
     @Override
     public IPage<ScheduledTaskVO> pageScheduledTasks(ScheduledTaskPageQuery query) {
@@ -63,7 +66,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
         task.setDeleted(0);
         save(task);
         if (task.getTaskStatus() == 1) {
-            dynamicTaskScheduler.addTask(task);
+            getScheduler().addTask(task);
         }
         return toVO(task);
     }
@@ -86,10 +89,10 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
         if (request.getRemark() != null) task.setRemark(request.getRemark());
         updateById(task);
         if (wasRunning) {
-            dynamicTaskScheduler.removeTask(id);
+            getScheduler().removeTask(id);
         }
         if (task.getTaskStatus() == 1) {
-            dynamicTaskScheduler.addTask(task);
+            getScheduler().addTask(task);
         }
         return toVO(task);
     }
@@ -102,7 +105,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
             throw new BusinessException(404, "任务不存在");
         }
         if (task.getTaskStatus() == 1) {
-            dynamicTaskScheduler.removeTask(id);
+            getScheduler().removeTask(id);
         }
         task.setDeleted(1);
         updateById(task);
@@ -120,7 +123,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
         }
         task.setTaskStatus(1);
         updateById(task);
-        dynamicTaskScheduler.addTask(task);
+        getScheduler().addTask(task);
     }
 
     @Override
@@ -135,7 +138,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
         }
         task.setTaskStatus(0);
         updateById(task);
-        dynamicTaskScheduler.removeTask(id);
+        getScheduler().removeTask(id);
     }
 
     @Override
@@ -163,7 +166,7 @@ public class ScheduledTaskServiceImpl extends ServiceImpl<ScheduledTaskMapper, S
                 .build();
         if (task.getTaskStatus() == 1) {
             try {
-                vo.setNextExecutionTime(dynamicTaskScheduler.getNextExecutionTime(task.getCronExpression()));
+                vo.setNextExecutionTime(getScheduler().getNextExecutionTime(task.getCronExpression()));
             } catch (Exception ignored) {
             }
         }

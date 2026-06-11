@@ -2,7 +2,7 @@ package com.prompt2repo.admin.scheduler;
 
 import com.prompt2repo.admin.entity.ScheduledTask;
 import com.prompt2repo.admin.entity.TaskExecutionLog;
-import com.prompt2repo.admin.service.ScheduledTaskService;
+import com.prompt2repo.admin.mapper.ScheduledTaskMapper;
 import com.prompt2repo.admin.service.SysOperationLogService;
 import com.prompt2repo.admin.service.TaskExecutionLogService;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class DynamicTaskScheduler implements SchedulingConfigurer {
 
-    private final ScheduledTaskService scheduledTaskService;
+    private final ScheduledTaskMapper scheduledTaskMapper;
     private final TaskExecutionLogService taskExecutionLogService;
     private final SysOperationLogService operationLogService;
     private final ApplicationContext applicationContext;
@@ -43,7 +43,7 @@ public class DynamicTaskScheduler implements SchedulingConfigurer {
 
     private void initTasks() {
         try {
-            java.util.List<ScheduledTask> tasks = scheduledTaskService.list(
+            java.util.List<ScheduledTask> tasks = scheduledTaskMapper.selectList(
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ScheduledTask>()
                             .eq(ScheduledTask::getTaskStatus, 1)
                             .eq(ScheduledTask::getDeleted, 0)
