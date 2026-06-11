@@ -325,3 +325,141 @@ update(updateWrapper);
 ---
 
 *新增修复请在"修复记录"标题下按时间倒序排列（最新的在最上面）。*
+
+---
+
+# Toast 提示组件高度异常修复指南
+
+## 问题描述
+
+**问题 ID**: TOAST-HEIGHT-004  
+**严重级别**: 中（UI 缺陷）  
+**发现日期**: 2026-06-11
+
+Toast 提示组件在升级为支持多条消息排队展示后，出现高度异常问题：组件内部出现大片空白区域，Toast 卡片高度远大于实际内容高度，影响视觉效果。
+
+---
+
+## 根因分析
+
+旧静态 #appToast 元素（HTML 中残留）
+  + .toast-container 上的 p-3 padding 类
+  + flex 布局 gap 间距叠加
+  + 未明确指定 toast-header/toast-body 的 padding
+  = 大面积空白 + 高度异常
+
+**核心缺陷**：
+
+1. **旧静态元素残留**：index.html 和 login.html 中保留了旧的 #appToast 静态元素，在 flex 布局中作为占位存在
+2. **容器 padding 冗余**：.toast-container 的 p-3 类（Bootstrap padding 1rem）与 flex gap: 10px 叠加，造成四周不必要的空白
+3. **Toast 内边距不一致**：toast-header 和 toast-body 未明确指定 padding，依赖 Bootstrap 默认值可能产生过大的内边距
+4. **overflow 未约束**：动态创建的 Toast 元素未设置 overflow: hidden，在某些浏览器下可能出现高度计算异常
+
+---
+
+## 修复方案（4 层优化）
+
+### 第 1 层：CSS 容器样式重置
+**文件**: frontend/src/assets/css/styles.css
+
+`css
+.toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1070;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;          /* 关键：移除 p-3 的影响，用 gap 统一控制间距 */
+}
+`
+
+---
+
+### 第 2 层：Toast 卡片样式精细化
+**文件**: frontend/src/assets/css/styles.css
+
+`css
+.toast-container > .toast {
+    min-width: 300px;
+    max-width: 380px;
+    animation: toastSlideIn 0.3s ease-out;
+    margin: 0;            /* 关键：清除 Bootstrap 默认 margin */
+    overflow: hidden;     /* 关键：约束内容溢出，稳定高度计算 */
+}
+
+.toast-container > .toast .toast-header {
+    padding: 0.5rem 0.75rem;   /* 明确内边距，替代默认过大值 */
+}
+
+.toast-container > .toast .toast-body {
+    padding: 0.75rem;           /* 明确内边距 */
+    line-height: 1.5;           /* 稳定行高，避免高度跳动 */
+}
+`
+
+---
+
+### 第 3 层：旧静态 Toast 强制隐藏
+**文件**: frontend/src/assets/css/styles.css
+
+`css
+/* 隐藏 HTML 中残留的旧静态 Toast 元素，防止它参与 flex 布局 */
+.toast-container > #appToast {
+    display: none !important;
+}
+`
+
+---
+
+### 第 4 层：JS 运行时清理
+**文件**: frontend/src/assets/js/common.js
+
+新增 initToastContainer() 初始化函数，在每次创建 Toast 前执行清理：
+
+`js
+function initToastContainer() {
+    var container = .toast-container;
+    if (!container.length) {
+        container = <div class="toast-container"></div>.appendTo('body');
+    }
+    container.find('#appToast').remove();  // 关键：移除旧静态 toast 节点
+    container.removeClass('p-3');            // 关键：移除冗余 padding 类
+    return container;
+}
+`
+
+---
+
+## 修复验证清单
+
+| 验证项 | 预期结果 |
+|--------|----------|
+| 单条 Toast 展示 | 高度紧凑贴合内容，无多余空白 |
+| 连续触发多条 Toast | 每条高度正常，纵向间距 10px，最新在上 |
+| 不同类型 Toast | 高度一致，无变形 |
+| Toast header 区域 | 高度紧凑，布局合理 |
+| Toast body 区域 | 内边距适中，文字行高稳定 |
+| 长文本消息 | 自动换行，高度自适应 |
+| 短文本消息 | 高度紧凑，无多余填充 |
+| 滑入/滑出动画 | 流畅无变形 |
+
+---
+
+## 涉及文件与定位
+
+| 文件 | 关键修改位置 |
+|------|--------------|
+| frontend/src/assets/css/styles.css | .toast-container、.toast-container > .toast、.toast-header、.toast-body、.toast-container > #appToast 规则 |
+| frontend/src/assets/js/common.js | 新增 initToastContainer() 函数，showToast() 中调用 |
+
+---
+
+## 设计要点
+
+1. **双保险隐藏策略**：CSS 层 display: none !important + JS 层 .remove() 双重处理
+2. **padding 与 gap 分工明确**：容器用 gap 控制 Toast 间纵向间距，top/right 控制与视口边缘距离
+3. **直接子元素选择器**：使用 > 避免嵌套元素误匹配
+4. **overflow 约束**：确保高度计算稳定，同时保护圆角边缘
+5. **防御性编程**：initToastContainer() 每次执行都检查清理，兼容未来变动

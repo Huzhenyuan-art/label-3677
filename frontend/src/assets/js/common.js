@@ -129,13 +129,23 @@
     var toastIdCounter = 0;
     var DEFAULT_TOAST_DURATION = 2600;
 
+    function initToastContainer() {
+        var container = $('.toast-container');
+        if (!container.length) {
+            container = $('<div class="toast-container"></div>').appendTo('body');
+        }
+        container.find('#appToast').remove();
+        container.removeClass('p-3');
+        return container;
+    }
+
     function showToast(message, typeClass, duration) {
         var id = 'toast-' + (++toastIdCounter);
         var toastDuration = duration || DEFAULT_TOAST_DURATION;
         var type = typeClass || 'bg-primary';
 
         var toastHtml =
-            '<div id="' + id + '" class="toast toast-item" role="alert" aria-live="assertive" aria-atomic="true" data-delay="' + toastDuration + '">' +
+            '<div id="' + id + '" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="' + toastDuration + '">' +
             '  <div class="toast-header ' + type + ' text-white">' +
             '    <strong class="mr-auto">系统提示</strong>' +
             '    <button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast" aria-label="Close">' +
@@ -145,11 +155,7 @@
             '  <div class="toast-body">' + escapeHtml(message || '操作完成') + '</div>' +
             '</div>';
 
-        var container = $('.toast-container');
-        if (!container.length) {
-            container = $('<div class="toast-container p-3"></div>').appendTo('body');
-        }
-
+        var container = initToastContainer();
         var toastEl = $(toastHtml).prependTo(container);
 
         toastEl.toast({
