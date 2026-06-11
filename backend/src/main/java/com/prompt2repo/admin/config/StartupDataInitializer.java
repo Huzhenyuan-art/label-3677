@@ -10,6 +10,7 @@ import com.prompt2repo.admin.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.startup.init-enabled", havingValue = "true", matchIfMissing = true)
 public class StartupDataInitializer implements CommandLineRunner {
 
     private final SysUserService sysUserService;

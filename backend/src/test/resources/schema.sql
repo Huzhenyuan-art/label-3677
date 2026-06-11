@@ -1,0 +1,153 @@
+SET MODE MySQL;
+SET REFERENTIAL_INTEGRITY FALSE;
+
+DROP TABLE IF EXISTS task_execution_log;
+DROP TABLE IF EXISTS scheduled_task;
+DROP TABLE IF EXISTS sys_notice_read;
+DROP TABLE IF EXISTS sys_notice;
+DROP TABLE IF EXISTS sys_login_log;
+DROP TABLE IF EXISTS sys_operation_log;
+DROP TABLE IF EXISTS sys_role_menu;
+DROP TABLE IF EXISTS sys_user_role;
+DROP TABLE IF EXISTS sys_role;
+DROP TABLE IF EXISTS sys_menu;
+DROP TABLE IF EXISTS sys_user;
+
+SET REFERENTIAL_INTEGRITY TRUE;
+
+CREATE TABLE sys_user (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL UNIQUE,
+  password VARCHAR(128) NOT NULL,
+  nickname VARCHAR(64) NOT NULL,
+  avatar VARCHAR(255) NULL,
+  user_status TINYINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_login_at TIMESTAMP NULL,
+  deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE sys_menu (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  parent_id BIGINT NOT NULL DEFAULT 0,
+  title VARCHAR(64) NOT NULL,
+  path VARCHAR(128) NOT NULL,
+  icon VARCHAR(64) NULL,
+  perm_code VARCHAR(64) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  visible TINYINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_role (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  role_code VARCHAR(64) NOT NULL UNIQUE,
+  role_name VARCHAR(64) NOT NULL,
+  description VARCHAR(255) NULL,
+  role_status TINYINT NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE sys_user_role (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  role_id BIGINT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_role (user_id, role_id)
+);
+
+CREATE TABLE sys_role_menu (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  role_id BIGINT NOT NULL,
+  menu_id BIGINT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_role_menu (role_id, menu_id)
+);
+
+CREATE TABLE sys_operation_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  operator_id BIGINT NULL,
+  operator_username VARCHAR(64) NULL,
+  operator_nickname VARCHAR(64) NULL,
+  operation_module VARCHAR(64) NOT NULL,
+  operation_desc VARCHAR(255) NOT NULL,
+  request_method VARCHAR(16) NOT NULL,
+  request_path VARCHAR(255) NOT NULL,
+  request_params TEXT NULL,
+  response_result TEXT NULL,
+  execution_time BIGINT NOT NULL DEFAULT 0,
+  success TINYINT NOT NULL DEFAULT 1,
+  error_message TEXT NULL,
+  client_ip VARCHAR(64) NULL,
+  user_agent VARCHAR(512) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_login_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NULL,
+  login_status TINYINT NOT NULL,
+  client_ip VARCHAR(64) NULL,
+  user_agent VARCHAR(512) NULL,
+  fail_reason VARCHAR(255) NULL,
+  login_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_notice (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  notice_type INT NOT NULL DEFAULT 1,
+  notice_status TINYINT NOT NULL DEFAULT 0,
+  is_pinned TINYINT NOT NULL DEFAULT 0,
+  publisher_id BIGINT NULL,
+  publisher_username VARCHAR(64) NULL,
+  publisher_nickname VARCHAR(64) NULL,
+  published_at TIMESTAMP NULL,
+  recalled_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE sys_notice_read (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  notice_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  read_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_notice_user (notice_id, user_id)
+);
+
+CREATE TABLE scheduled_task (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  task_name VARCHAR(64) NOT NULL,
+  task_group VARCHAR(64) NULL,
+  cron_expression VARCHAR(128) NOT NULL,
+  bean_name VARCHAR(128) NOT NULL,
+  method_name VARCHAR(128) NULL,
+  method_params VARCHAR(512) NULL,
+  task_status TINYINT NOT NULL DEFAULT 0,
+  remark VARCHAR(255) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE task_execution_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  task_id BIGINT NOT NULL,
+  task_name VARCHAR(64) NOT NULL,
+  task_group VARCHAR(64) NULL,
+  cron_expression VARCHAR(128) NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP NULL,
+  execution_duration BIGINT NOT NULL DEFAULT 0,
+  execution_status TINYINT NOT NULL,
+  error_message TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
