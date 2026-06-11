@@ -81,7 +81,7 @@ public class AuthController {
 
             String token = jwtTokenService.generateToken(user.getId(), user.getUsername());
             String sessionId = jwtTokenService.parseSessionId(token);
-            redisSessionService.saveSession(user.getId(), user.getUsername(), permissions, sessionId, jwtTokenService.getExpireSeconds());
+            redisSessionService.saveSession(user.getId(), user.getUsername(), permissions, sessionId, ip, jwtTokenService.getExpireSeconds());
             sysUserService.updateLastLogin(user.getId());
             loginAttemptService.clear(ip);
 
@@ -160,7 +160,8 @@ public class AuthController {
                 : sysRoleService.listPermCodesByUserId(currentUser.getId());
         String newToken = jwtTokenService.generateToken(currentUser.getId(), currentUser.getUsername());
         String sessionId = jwtTokenService.parseSessionId(newToken);
-        redisSessionService.saveSession(currentUser.getId(), currentUser.getUsername(), permissions, sessionId, jwtTokenService.getExpireSeconds());
+        String currentIp = IpUtil.getClientIp(httpRequest);
+        redisSessionService.saveSession(currentUser.getId(), currentUser.getUsername(), permissions, sessionId, currentIp, jwtTokenService.getExpireSeconds());
 
         log.info("用户修改密码成功 username={}", currentUser.getUsername());
 

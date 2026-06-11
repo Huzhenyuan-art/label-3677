@@ -1038,3 +1038,57 @@ body.lock-mode {
         z-index: 1;
     }
 }
+
+.online-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2f7d58;
+    box-shadow: 0 0 0 3px rgba(47, 125, 88, 0.15);
+    animation: onlinePulse 2s ease-in-out infinite;
+}
+
+@keyframes onlinePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 3px rgba(47, 125, 88, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(47, 125, 88, 0.08);
+    }
+}
+
+.session-table th {
+    white-space: nowrap;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.session-table td {
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+.session-table tbody tr:hover {
+    background: #f6faff;
+}
+
+#session-refresh-btn i {
+    transition: transform 0.3s ease;
+}
+
+#session-refresh-btn:hover i {
+    transform: rotate(180deg);
+}
+
+#session-table-container {
+    min-height: 200px;
+}
+
+.badge-soft-secondary {
+    background: #f1f4fa;
+    color: #5f7294;
+    border: 1px solid #dde5f1;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+}

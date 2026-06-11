@@ -57,6 +57,7 @@ public class StartupDataInitializer implements CommandLineRunner {
 
     private void initMenus() {
         if (sysMenuService.count() > 0) {
+            ensureOnlineSessionMenu();
             return;
         }
 
@@ -70,12 +71,48 @@ public class StartupDataInitializer implements CommandLineRunner {
         SysMenu m4 = buildMenu(systemMenuId, "菜单权限", "/menus", "fas fa-list", "menu:manage", 2, 1);
         SysMenu m5 = buildMenu(systemMenuId, "用户管理", "/users", "fas fa-users-cog", "user:manage", 3, 1);
         SysMenu m8 = buildMenu(systemMenuId, "角色管理", "/roles", "fas fa-user-tag", "role:manage", 4, 1);
+        SysMenu m9 = buildMenu(systemMenuId, "在线会话", "/online-sessions", "fas fa-user-clock", "session:view", 5, 1);
 
         Long logMenuId = m6.getId();
         SysMenu m7 = buildMenu(logMenuId, "操作日志", "/operation-logs", "fas fa-clipboard-list", "operationLog:view", 1, 1);
 
-        sysMenuService.saveBatch(Arrays.asList(m3, m4, m5, m7, m8));
+        sysMenuService.saveBatch(Arrays.asList(m3, m4, m5, m7, m8, m9));
         log.info("初始化菜单数据完成");
+    }
+
+    private void ensureOnlineSessionMenu() {
+        SysMenu existing = sysMenuService.lambdaQuery()
+                .eq(SysMenu::getPermCode, "session:view")
+                .one();
+        if (existing != null) {
+            return;
+        }
+
+        SysMenu systemMenu = sysMenuService.lambdaQuery()
+                .eq(SysMenu::getPermCode, "system:root")
+                .one();
+        if (systemMenu == null) {
+            return;
+        }
+
+        SysMenu lastMenu = sysMenuService.lambdaQuery()
+                .eq(SysMenu::getParentId, systemMenu.getId())
+                .orderByDesc(SysMenu::getSortOrder)
+                .last("limit 1")
+                .one();
+        Integer maxSort = lastMenu != null ? lastMenu.getSortOrder() : 0;
+
+        SysMenu onlineSessionMenu = buildMenu(
+                systemMenu.getId(),
+                "在线会话",
+                "/online-sessions",
+                "fas fa-user-clock",
+                "session:view",
+                maxSort != null ? maxSort + 1 : 99,
+                1
+        );
+        sysMenuService.save(onlineSessionMenu);
+        log.info("补全在线会话菜单完成");
     }
 
     private void initRoles() {

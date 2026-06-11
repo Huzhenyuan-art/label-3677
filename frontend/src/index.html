@@ -491,6 +491,24 @@
     </div>
 </div>
 
+<div id="force-logout-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="force-logout-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="force-logout-label">强制下线确认</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="force-logout-body">确定要强制下线该用户吗？</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="force-logout-confirm-btn" class="btn btn-danger">确认下线</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container p-3">
     <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2600">
         <div class="toast-header bg-primary text-white">
