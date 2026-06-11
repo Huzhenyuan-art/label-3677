@@ -426,6 +426,7 @@
                 smoothUpdateOverviewCards(currentOverview, prev);
                 smoothUpdateChart(currentOverview);
                 smoothUpdateDashboardPanel(currentOverview);
+                fetchAndRenderLoginTrend();
             }
         });
     }
@@ -571,6 +572,8 @@
         var menuStats = buildMenuStats(cachedMenus);
         var overview = currentOverview || {};
 
+        destroyAllDashboardCharts();
+
         setHero(
             '系统总览',
             '实时监控平台核心指标，掌握用户、权限和在线状态。',
@@ -591,19 +594,21 @@
             '<h6 class="font-weight-bold mb-2"><i class="fas fa-chart-line mr-1"></i>近七日登录趋势</h6>' +
             '<canvas id="loginTrendChart" height="200"></canvas>'
         );
-        renderChart({
-            userCount: Number(overview.userCount || 0),
-            menuCount: Number(overview.menuCount || menuStats.total || 0),
-            onlineSessions: Number(overview.onlineSessions || 0)
-        });
-        fetchAndRenderLoginTrend();
+        setTimeout(function () {
+            renderChart({
+                userCount: Number(overview.userCount || 0),
+                menuCount: Number(overview.menuCount || menuStats.total || 0),
+                onlineSessions: Number(overview.onlineSessions || 0)
+            });
+            fetchAndRenderLoginTrend();
+        }, 30);
 
         $('#dynamic-panel-title').text('运行状态');
         renderDashboardPanel(overview, menuStats);
     }
 
     function renderProfileScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
 
         var user = AppCommon.parseJson(localStorage.getItem(AppCommon.STORAGE_KEYS.USER), {});
         var displayName = user.nickname || user.username || '管理员';
@@ -636,7 +641,7 @@
     }
 
     function renderUsersScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
 
         setHero(
             '用户管理',
@@ -1015,7 +1020,7 @@
     }
 
     function renderMenusScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
         bindMenuManageEvents();
 
         var menus = menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus;
@@ -1721,7 +1726,7 @@
     }
 
     function renderGenericScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
 
         setHero(
             currentMenu.title || '功能页面',
@@ -2192,7 +2197,6 @@
             overviewChart.destroy();
             overviewChart = null;
         }
-        destroyLoginTrendChart();
     }
 
     function destroyLoginTrendChart() {
@@ -2200,6 +2204,11 @@
             loginTrendChart.destroy();
             loginTrendChart = null;
         }
+    }
+
+    function destroyAllDashboardCharts() {
+        destroyOverviewChart();
+        destroyLoginTrendChart();
     }
 
     function renderChart(data) {
@@ -2363,7 +2372,7 @@
     }
 
     function renderOperationLogsScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
         bindOperationLogEvents();
 
         setHero(
@@ -2666,7 +2675,7 @@
     }
 
     function renderRolesScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
         bindRoleEvents();
 
         setHero(
@@ -3205,7 +3214,7 @@
     }
 
     function renderOnlineSessionsScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
         bindOnlineSessionEvents();
 
         setHero(
@@ -3433,75 +3442,154 @@
     }
 
     function fetchAndRenderLoginTrend() {
-        $.get('/api/login-logs/trend', function (resp) {
-            if (!resp || Number(resp.code) !== 0 || !Array.isArray(resp.data)) {
-                return;
-            }
-            var context = document.getElementById('loginTrendChart');
-            if (!context) {
-                return;
-            }
-            destroyLoginTrendChart();
+        $.ajax({
+            url: '/api/login-logs/trend',
+            method: 'GET',
+            timeout: 10000,
+            success: function (resp) {
+                var context = document.getElementById('loginTrendChart');
+                if (!context) {
+                    return;
+                }
+                destroyLoginTrendChart();
 
-            var labels = [];
-            var successData = [];
-            var failData = [];
-            resp.data.forEach(function (item) {
-                labels.push(item.date ? item.date.substring(5) : '');
-                successData.push(Number(item.successCount || 0));
-                failData.push(Number(item.failCount || 0));
-            });
+                var labels = [];
+                var successData = [];
+                var failData = [];
 
-            loginTrendChart = new Chart(context, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: '登录成功',
-                            data: successData,
-                            borderColor: '#5c9d84',
-                            backgroundColor: 'rgba(92,157,132,0.1)',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        },
-                        {
-                            label: '登录失败',
-                            data: failData,
-                            borderColor: '#e05555',
-                            backgroundColor: 'rgba(224,85,85,0.1)',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top' }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { precision: 0 },
-                            grid: { color: 'rgba(15, 23, 42, 0.08)' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
+                if (resp && Number(resp.code) === 0 && Array.isArray(resp.data) && resp.data.length) {
+                    resp.data.forEach(function (item) {
+                        labels.push(item.date ? item.date.substring(5) : '');
+                        successData.push(Number(item.successCount || 0));
+                        failData.push(Number(item.failCount || 0));
+                    });
+                } else {
+                    var today = new Date();
+                    for (var i = 6; i >= 0; i--) {
+                        var d = new Date(today);
+                        d.setDate(today.getDate() - i);
+                        var mm = String(d.getMonth() + 1).padStart(2, '0');
+                        var dd = String(d.getDate()).padStart(2, '0');
+                        labels.push(mm + '-' + dd);
+                        successData.push(0);
+                        failData.push(0);
                     }
                 }
-            });
+
+                loginTrendChart = new Chart(context, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '登录成功',
+                                data: successData,
+                                borderColor: '#5c9d84',
+                                backgroundColor: 'rgba(92,157,132,0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: '登录失败',
+                                data: failData,
+                                borderColor: '#e05555',
+                                backgroundColor: 'rgba(224,85,85,0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                grid: { color: 'rgba(15, 23, 42, 0.08)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            },
+            error: function () {
+                var context = document.getElementById('loginTrendChart');
+                if (!context) {
+                    return;
+                }
+                destroyLoginTrendChart();
+
+                var labels = [];
+                var today = new Date();
+                for (var i = 6; i >= 0; i--) {
+                    var d = new Date(today);
+                    d.setDate(today.getDate() - i);
+                    var mm = String(d.getMonth() + 1).padStart(2, '0');
+                    var dd = String(d.getDate()).padStart(2, '0');
+                    labels.push(mm + '-' + dd);
+                }
+
+                loginTrendChart = new Chart(context, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '登录成功',
+                                data: [0, 0, 0, 0, 0, 0, 0],
+                                borderColor: '#5c9d84',
+                                backgroundColor: 'rgba(92,157,132,0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: '登录失败',
+                                data: [0, 0, 0, 0, 0, 0, 0],
+                                borderColor: '#e05555',
+                                backgroundColor: 'rgba(224,85,85,0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                grid: { color: 'rgba(15, 23, 42, 0.08)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
         });
     }
 
     function renderLoginLogsScene() {
-        destroyOverviewChart();
+        destroyAllDashboardCharts();
         bindLoginLogEvents();
 
         setHero(

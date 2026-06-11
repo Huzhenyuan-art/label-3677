@@ -29,7 +29,7 @@ public class LoginLogController {
     }
 
     @GetMapping("/trend")
-    @PreAuthorize("hasAuthority('loginLog:view')")
+    @PreAuthorize("hasAuthority('dashboard:view')")
     public ApiResponse<List<LoginTrendVO>> loginTrend7Days() {
         return ApiResponse.success(loginLogService.getLoginTrend7Days());
     }
