@@ -6,7 +6,9 @@
         USER: 'admin_user',
         MENUS: 'admin_menus',
         IDLE_TIMEOUT: 'admin_idle_timeout',
-        IDLE_LAST_ACTIVITY: 'admin_idle_last_activity'
+        IDLE_LAST_ACTIVITY: 'admin_idle_last_activity',
+        SIDEBAR_COLLAPSED: 'admin_sidebar_collapsed',
+        SIDEBAR_EXPANDED_MENUS: 'admin_sidebar_expanded_menus'
     };
 
     var DEFAULT_IDLE_TIMEOUT = 300;

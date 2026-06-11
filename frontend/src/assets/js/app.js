@@ -204,8 +204,11 @@
                 return;
             }
 
+            restoreSidebarCollapsedState();
+
             AppCommon.setupAjax();
             bindEvents();
+            bindSidebarStateEvents();
             loadBaseData();
             startIdleMonitor();
             startTokenCountdown();
@@ -425,10 +428,14 @@
                 menuRoot.append(renderSingleMenu(menu));
             }
         });
+
+        restoreSidebarExpandedMenus();
     }
 
     function renderTreeMenu(menu) {
         var item = $('<li class="nav-item has-treeview"></li>');
+        var menuIdentifier = (menu.path && menu.path !== '#') ? menu.path : ('__dir__' + (menu.id != null ? menu.id : menu.title));
+        item.attr('data-menu-id', menuIdentifier);
         var link = $('<a href="#" class="nav-link"></a>');
         link.append('<i class="nav-icon ' + safeIcon(menu.icon) + '"></i>');
         link.append('<p>' + escapeHtml(menu.title) + '<i class="right fas fa-angle-left"></i></p>');
@@ -484,6 +491,7 @@
         $('#sidebar-menu .nav-item').removeClass('menu-open');
         element.addClass('active');
         element.parents('.has-treeview').addClass('menu-open');
+        restoreSidebarExpandedMenus();
     }
 
     function syncActiveMenuByPath(path) {
@@ -2237,6 +2245,91 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function saveSidebarCollapsedState(collapsed) {
+        localStorage.setItem(AppCommon.STORAGE_KEYS.SIDEBAR_COLLAPSED, collapsed ? '1' : '0');
+    }
+
+    function restoreSidebarCollapsedState() {
+        var stored = localStorage.getItem(AppCommon.STORAGE_KEYS.SIDEBAR_COLLAPSED);
+        if (stored === '1') {
+            $('body').addClass('sidebar-collapse');
+        } else if (stored === '0') {
+            $('body').removeClass('sidebar-collapse');
+        }
+    }
+
+    function getSidebarExpandedMenuPaths() {
+        var stored = localStorage.getItem(AppCommon.STORAGE_KEYS.SIDEBAR_EXPANDED_MENUS);
+        return AppCommon.parseJson(stored, []);
+    }
+
+    function saveSidebarExpandedMenuPaths(paths) {
+        localStorage.setItem(AppCommon.STORAGE_KEYS.SIDEBAR_EXPANDED_MENUS, JSON.stringify(paths));
+    }
+
+    function collectExpandedMenuPaths() {
+        var ids = [];
+        $('#sidebar-menu .has-treeview').each(function () {
+            var item = $(this);
+            var submenu = item.children('.nav-treeview');
+            var isExpanded = submenu.length && submenu.css('display') !== 'none';
+            if (isExpanded) {
+                var menuId = item.attr('data-menu-id');
+                if (menuId) {
+                    ids.push(menuId);
+                }
+            }
+        });
+        return ids;
+    }
+
+    function restoreSidebarExpandedMenus() {
+        var expandedIds = getSidebarExpandedMenuPaths();
+        if (!Array.isArray(expandedIds) || expandedIds.length === 0) {
+            return;
+        }
+        expandedIds.forEach(function (menuId) {
+            var item = $('#sidebar-menu .has-treeview[data-menu-id="' + menuId + '"]').first();
+            if (item.length) {
+                item.addClass('menu-open');
+                var submenu = item.children('.nav-treeview');
+                if (submenu.length) {
+                    submenu.css('display', 'block');
+                }
+            }
+        });
+    }
+
+    function bindSidebarStateEvents() {
+        $(document).off('collapsed.lte.pushmenu').on('collapsed.lte.pushmenu', function () {
+            saveSidebarCollapsedState(true);
+        });
+        $(document).off('expanded.lte.pushmenu').on('expanded.lte.pushmenu', function () {
+            saveSidebarCollapsedState(false);
+        });
+
+        $('body').on('collapsed.lte.pushmenu', function () {
+            saveSidebarCollapsedState(true);
+        });
+        $('body').on('expanded.lte.pushmenu', function () {
+            saveSidebarCollapsedState(false);
+        });
+
+        $(document).off('click.sidebarToggle').on('click.sidebarToggle', '[data-widget=\"pushmenu\"]', function () {
+            setTimeout(function () {
+                var isCollapsed = $('body').hasClass('sidebar-collapse');
+                saveSidebarCollapsedState(isCollapsed);
+            }, 150);
+        });
+
+        $(document).on('click', '#sidebar-menu .has-treeview > .nav-link', function (e) {
+            setTimeout(function () {
+                var paths = collectExpandedMenuPaths();
+                saveSidebarExpandedMenuPaths(paths);
+            }, 350);
+        });
     }
 
     function renderOperationLogsScene() {
