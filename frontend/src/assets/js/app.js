@@ -24,7 +24,11 @@
         allMenus: [],
         expandedIds: {},
         pendingDeleteMenuId: null,
-        pendingDeleteMenuTitle: ''
+        pendingDeleteMenuTitle: '',
+        searchKeyword: '',
+        filteredMenus: [],
+        allRoles: [],
+        roleMenuMap: {}
     };
 
     var operationLogState = {
@@ -970,9 +974,9 @@
         var menus = menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus;
         var stats = buildMenuStats(menus);
         setHero(
-            '菜单与权限',
-            '管理菜单树结构，支持新增、编辑、删除、排序与显示隐藏切换。',
-            ['树形结构', '权限管理', '实时同步']
+            '菜单权限预览',
+            '关键词检索菜单权限，支持过滤左侧树形与右侧权限矩阵，高亮匹配项。',
+            ['只读预览', '关键词检索', '权限矩阵']
         );
 
         renderOverviewCards([
@@ -982,11 +986,296 @@
             { label: '最大层级', value: stats.maxDepth, icon: 'fas fa-project-diagram', tone: 'tone-danger', note: '当前菜单树深度' }
         ]);
 
-        setPrimaryPanelTitle('菜单管理');
-        renderMenuManagePanel(menus);
+        setPrimaryPanelTitle('菜单权限预览');
+        renderMenuPreviewPanel(menus);
 
-        $('#dynamic-panel-title').text('操作说明');
-        renderMenuManageHelpPanel();
+        $('#dynamic-panel-title').text('权限矩阵');
+        loadRoleMenuMatrix();
+    }
+
+    function renderMenuPreviewPanel(menus) {
+        var keyword = menuManageState.searchKeyword || '';
+        var displayMenus = keyword ? menuManageState.filteredMenus : menus;
+
+        var headerHtml = '' +
+            '<div class="menu-preview-header mb-3">' +
+            '<div class="d-flex flex-wrap align-items-center justify-content-between">' +
+            '<div class="form-inline">' +
+            '<div class="input-group input-group-sm mr-2 mb-2">' +
+            '<div class="input-group-prepend">' +
+            '<span class="input-group-text"><i class="fas fa-search"></i></span>' +
+            '</div>' +
+            '<input type="text" id="menu-search-input" class="form-control" placeholder="输入关键词搜索菜单名称、路径、权限码..." ' +
+            'value="' + escapeHtml(keyword) + '" style="min-width: 320px;">' +
+            (keyword ? '<div class="input-group-append"><button type="button" id="menu-search-clear" class="btn btn-outline-secondary"><i class="fas fa-times"></i></button></div>' : '') +
+            '</div>' +
+            '<span class="text-muted text-sm mb-2">只读预览模式，搜索不会修改任何菜单数据</span>' +
+            '</div>' +
+            (keyword ? '<span class="text-sm text-info mb-2"><i class="fas fa-filter mr-1"></i>找到 ' + countFilteredMenus(displayMenus) + ' 个匹配项</span>' : '') +
+            '</div>' +
+            '</div>';
+
+        var treeHtml = '<div class="menu-preview-tree" style="max-height: 500px; overflow-y: auto;">';
+        if (!displayMenus || !displayMenus.length) {
+            treeHtml += '<div class="text-center text-muted py-5">' + (keyword ? '未找到匹配的菜单' : '暂无菜单数据') + '</div>';
+        } else {
+            treeHtml += buildPreviewTreeHtml(displayMenus, 1, keyword);
+        }
+        treeHtml += '</div>';
+
+        $('#primary-panel-body').html(headerHtml + treeHtml);
+        bindMenuPreviewEvents();
+    }
+
+    function bindMenuPreviewEvents() {
+        $(document).off('input.menuSearch').on('input.menuSearch', '#menu-search-input', function () {
+            var keyword = $.trim($(this).val());
+            menuManageState.searchKeyword = keyword;
+            if (keyword) {
+                menuManageState.filteredMenus = filterMenusByKeyword(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus, keyword);
+                expandAllForSearch(menuManageState.filteredMenus);
+            } else {
+                menuManageState.filteredMenus = [];
+            }
+            renderMenuPreviewPanel(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus);
+            renderPermissionMatrix();
+        });
+
+        $(document).off('click.menuSearchClear').on('click.menuSearchClear', '#menu-search-clear', function () {
+            menuManageState.searchKeyword = '';
+            menuManageState.filteredMenus = [];
+            renderMenuPreviewPanel(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus);
+            renderPermissionMatrix();
+        });
+
+        $(document).off('click.menuPreviewToggle').on('click.menuPreviewToggle', '.menu-preview-toggle', function (e) {
+            e.stopPropagation();
+            var row = $(this).closest('.menu-preview-item');
+            var id = Number(row.data('id'));
+            menuManageState.expandedIds[id] = menuManageState.expandedIds[id] === false ? true : false;
+            renderMenuPreviewPanel(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus);
+        });
+    }
+
+    function filterMenusByKeyword(nodes, keyword) {
+        if (!keyword || !Array.isArray(nodes)) return [];
+        var lowerKeyword = keyword.toLowerCase();
+
+        function matchNode(node) {
+            var title = (node.title || '').toLowerCase();
+            var path = (node.path || '').toLowerCase();
+            var permCode = (node.permCode || '').toLowerCase();
+            return title.indexOf(lowerKeyword) !== -1 ||
+                   path.indexOf(lowerKeyword) !== -1 ||
+                   permCode.indexOf(lowerKeyword) !== -1;
+        }
+
+        function filterRecursive(list) {
+            var result = [];
+            list.forEach(function (node) {
+                var newNode = Object.assign({}, node);
+                var childrenMatch = [];
+                if (Array.isArray(node.children) && node.children.length) {
+                    childrenMatch = filterRecursive(node.children);
+                }
+                if (matchNode(node) || childrenMatch.length > 0) {
+                    if (childrenMatch.length > 0) {
+                        newNode.children = childrenMatch;
+                    } else {
+                        newNode.children = node.children;
+                    }
+                    result.push(newNode);
+                }
+            });
+            return result;
+        }
+
+        return filterRecursive(nodes);
+    }
+
+    function expandAllForSearch(nodes) {
+        if (!Array.isArray(nodes)) return;
+        nodes.forEach(function (node) {
+            menuManageState.expandedIds[node.id] = true;
+            if (Array.isArray(node.children) && node.children.length) {
+                expandAllForSearch(node.children);
+            }
+        });
+    }
+
+    function countFilteredMenus(nodes) {
+        if (!Array.isArray(nodes)) return 0;
+        var count = 0;
+        nodes.forEach(function (node) {
+            count++;
+            if (Array.isArray(node.children) && node.children.length) {
+                count += countFilteredMenus(node.children);
+            }
+        });
+        return count;
+    }
+
+    function highlightText(text, keyword) {
+        if (!keyword || !text) return escapeHtml(text);
+        var lowerText = text.toLowerCase();
+        var lowerKeyword = keyword.toLowerCase();
+        var index = lowerText.indexOf(lowerKeyword);
+        if (index === -1) return escapeHtml(text);
+
+        var result = '';
+        var lastIndex = 0;
+        while (index !== -1) {
+            result += escapeHtml(text.substring(lastIndex, index));
+            result += '<mark class="search-highlight">' + escapeHtml(text.substring(index, index + keyword.length)) + '</mark>';
+            lastIndex = index + keyword.length;
+            index = lowerText.indexOf(lowerKeyword, lastIndex);
+        }
+        result += escapeHtml(text.substring(lastIndex));
+        return result;
+    }
+
+    function buildPreviewTreeHtml(nodes, depth, keyword) {
+        if (!Array.isArray(nodes) || !nodes.length) return '';
+        var html = '<ul class="menu-preview-list">';
+        nodes.forEach(function (node) {
+            var hasChildren = Array.isArray(node.children) && node.children.length > 0;
+            var isExpanded = menuManageState.expandedIds[node.id] !== false;
+            var visibleBadge = node.visible === 0
+                ? '<span class="badge badge-soft-warning ml-2">已隐藏</span>'
+                : '';
+            var indent = (depth - 1) * 20;
+
+            html += '<li class="menu-preview-item" data-id="' + node.id + '" data-parent-id="' + (node.parentId || 0) + '">' +
+                '<div class="menu-preview-row" style="padding-left:' + indent + 'px;">' +
+                '<span class="menu-preview-toggle">';
+            if (hasChildren) {
+                html += '<i class="fas ' + (isExpanded ? 'fa-chevron-down' : 'fa-chevron-right') + ' text-muted"></i>';
+            } else {
+                html += '<span class="menu-preview-placeholder"></span>';
+            }
+            html += '</span>' +
+                '<span class="menu-preview-icon"><i class="' + safeIcon(node.icon) + '"></i></span>' +
+                '<span class="menu-preview-title">' + highlightText(node.title || '-', keyword) + '</span>' +
+                visibleBadge +
+                '<span class="menu-preview-path ml-2">' + highlightText(node.path || '#', keyword) + '</span>' +
+                '<span class="menu-preview-perm ml-2"><code>' + highlightText(node.permCode || '-', keyword) + '</code></span>' +
+                '</div>';
+
+            if (hasChildren && isExpanded) {
+                html += buildPreviewTreeHtml(node.children, depth + 1, keyword);
+            }
+            html += '</li>';
+        });
+        html += '</ul>';
+        return html;
+    }
+
+    function loadRoleMenuMatrix() {
+        $('#dynamic-content').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i>加载权限矩阵中...</div>');
+
+        $.when(
+            $.get('/api/roles/list'),
+            $.get('/api/menus/all')
+        ).done(function (rolesResp, menusResp) {
+            var roles = (rolesResp[0] && rolesResp[0].code === 0) ? rolesResp[0].data : [];
+            var allMenus = (menusResp[0] && menusResp[0].code === 0) ? menusResp[0].data : [];
+
+            menuManageState.allRoles = roles || [];
+            if (!menuManageState.allMenus.length && allMenus.length) {
+                menuManageState.allMenus = allMenus;
+            }
+
+            var roleRequests = roles.map(function (role) {
+                return $.get('/api/roles/' + role.id + '/menus');
+            });
+
+            if (roleRequests.length === 0) {
+                renderPermissionMatrix();
+                return;
+            }
+
+            $.when.apply($, roleRequests).done(function () {
+                var results = Array.prototype.slice.call(arguments);
+                roles.forEach(function (role, index) {
+                    var resp = results[index];
+                    var menuIds = (resp && resp[0] && resp[0].code === 0) ? resp[0].data : [];
+                    menuManageState.roleMenuMap[role.id] = {};
+                    (menuIds || []).forEach(function (id) {
+                        menuManageState.roleMenuMap[role.id][id] = true;
+                    });
+                });
+                renderPermissionMatrix();
+            }).fail(function () {
+                $('#dynamic-content').html('<div class="text-center text-danger py-4">加载权限矩阵失败，请刷新页面重试</div>');
+            });
+        }).fail(function () {
+            $('#dynamic-content').html('<div class="text-center text-danger py-4">加载角色数据失败，请刷新页面重试</div>');
+        });
+    }
+
+    function renderPermissionMatrix() {
+        var roles = menuManageState.allRoles || [];
+        var menus = menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus;
+        var keyword = menuManageState.searchKeyword || '';
+        var displayMenus = keyword ? menuManageState.filteredMenus : menus;
+
+        if (!roles.length) {
+            $('#dynamic-content').html('<div class="text-center text-muted py-4">暂无角色数据</div>');
+            return;
+        }
+
+        var flatMenus = flattenMenusForMatrix(displayMenus);
+        if (!flatMenus.length) {
+            $('#dynamic-content').html('<div class="text-center text-muted py-4">' + (keyword ? '未找到匹配的菜单权限' : '暂无菜单数据') + '</div>');
+            return;
+        }
+
+        var html = '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+        html += '<table class="table table-sm table-bordered table-hover mb-0 permission-matrix-table">';
+        html += '<thead class="thead-light sticky-top"><tr><th style="min-width: 180px;">菜单名称</th>';
+        roles.forEach(function (role) {
+            html += '<th class="text-center" style="min-width: 100px;">' + escapeHtml(role.roleName) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+
+        flatMenus.forEach(function (menu) {
+            var indent = Math.max((menu.depth - 1) * 14, 0);
+            html += '<tr data-menu-id="' + menu.id + '">';
+            html += '<td><span style="padding-left:' + indent + 'px;"><i class="' + safeIcon(menu.icon) + ' mr-1 text-muted"></i>' +
+                highlightText(menu.title || '-', keyword) +
+                '<div class="text-xs text-muted mt-1">权限码: ' + highlightText(menu.permCode || '-', keyword) + '</div>' +
+                '</span></td>';
+            roles.forEach(function (role) {
+                var hasPermission = menuManageState.roleMenuMap[role.id] && menuManageState.roleMenuMap[role.id][menu.id];
+                if (hasPermission) {
+                    html += '<td class="text-center"><span class="text-success"><i class="fas fa-check-circle"></i></span></td>';
+                } else {
+                    html += '<td class="text-center"><span class="text-muted"><i class="far fa-circle"></i></span></td>';
+                }
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        html += '<div class="mt-2 text-muted text-sm"><i class="fas fa-info-circle mr-1"></i>权限矩阵为只读视图，展示各角色拥有的菜单权限。<span class="text-success"><i class="fas fa-check-circle"></i></span> 表示拥有权限，<span class="text-muted"><i class="far fa-circle"></i></span> 表示无权限。</div>';
+
+        $('#dynamic-content').html(html);
+    }
+
+    function flattenMenusForMatrix(list, depth) {
+        var out = [];
+        var nextDepth = depth || 1;
+        if (!Array.isArray(list)) return out;
+
+        list.forEach(function (item) {
+            var node = Object.assign({}, item, { depth: nextDepth });
+            out.push(node);
+            if (Array.isArray(item.children) && item.children.length) {
+                out = out.concat(flattenMenusForMatrix(item.children, nextDepth + 1));
+            }
+        });
+
+        return out;
     }
 
     function renderMenuManagePanel(menus) {
