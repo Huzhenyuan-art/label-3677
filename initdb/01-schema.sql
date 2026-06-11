@@ -87,3 +87,17 @@ CREATE TABLE IF NOT EXISTS sys_operation_log (
   INDEX idx_created_at (created_at),
   INDEX idx_module (operation_module)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='系统操作日志表';
+
+CREATE TABLE IF NOT EXISTS sys_login_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NULL COMMENT '登录用户名',
+  login_status TINYINT NOT NULL COMMENT '登录状态（0-失败，1-成功）',
+  client_ip VARCHAR(64) NULL COMMENT '客户端IP',
+  user_agent VARCHAR(512) NULL COMMENT '用户代理',
+  fail_reason VARCHAR(255) NULL COMMENT '失败原因',
+  login_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
+  INDEX idx_username (username),
+  INDEX idx_login_status (login_status),
+  INDEX idx_client_ip (client_ip),
+  INDEX idx_login_at (login_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='登录日志表';

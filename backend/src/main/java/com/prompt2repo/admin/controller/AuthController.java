@@ -15,6 +15,7 @@ import com.prompt2repo.admin.exception.TooManyRequestsException;
 import com.prompt2repo.admin.security.LoginUserDetails;
 import com.prompt2repo.admin.service.LoginAttemptService;
 import com.prompt2repo.admin.service.RedisSessionService;
+import com.prompt2repo.admin.service.SysLoginLogService;
 import com.prompt2repo.admin.service.SysMenuService;
 import com.prompt2repo.admin.service.SysRoleService;
 import com.prompt2repo.admin.service.SysUserService;
@@ -52,6 +53,7 @@ public class AuthController {
     private final SysRoleService sysRoleService;
     private final RedisSessionService redisSessionService;
     private final LoginAttemptService loginAttemptService;
+    private final SysLoginLogService sysLoginLogService;
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
 
@@ -64,6 +66,8 @@ public class AuthController {
         try {
             loginAttemptService.assertAllow(ip);
         } catch (TooManyRequestsException ex) {
+            String ua = request.getHeader("User-Agent");
+            sysLoginLogService.recordLoginLog(loginRequest.getUsername(), false, ip, ua, "登录尝试过于频繁，账户已被锁定");
             LoginAttemptStatusVO status = loginAttemptService.getAttemptStatus(ip);
             return ApiResponse.fail(429, "登录尝试过于频繁，账户已被锁定", status);
         }
@@ -85,16 +89,25 @@ public class AuthController {
             sysUserService.updateLastLogin(user.getId());
             loginAttemptService.clear(ip);
 
+            String ua = request.getHeader("User-Agent");
+            sysLoginLogService.recordLoginLog(user.getUsername(), true, ip, ua, null);
+
             log.info("用户登录成功 username={}, ip={}", user.getUsername(), ip);
             return ApiResponse.success("登录成功", buildLoginResponse(user, token));
         } catch (BadCredentialsException ex) {
             loginAttemptService.recordFailure(ip);
+            String ua = request.getHeader("User-Agent");
+            sysLoginLogService.recordLoginLog(loginRequest.getUsername(), false, ip, ua, "用户名或密码错误");
             LoginAttemptStatusVO status = loginAttemptService.getAttemptStatus(ip);
             return ApiResponse.fail(401, "用户名或密码错误", status);
         } catch (DisabledException ex) {
+            String ua = request.getHeader("User-Agent");
+            sysLoginLogService.recordLoginLog(loginRequest.getUsername(), false, ip, ua, "用户已被禁用");
             throw new BusinessException(403, "用户已被禁用");
         } catch (AuthenticationException ex) {
             loginAttemptService.recordFailure(ip);
+            String ua = request.getHeader("User-Agent");
+            sysLoginLogService.recordLoginLog(loginRequest.getUsername(), false, ip, ua, "登录失败，请检查账号或密码");
             LoginAttemptStatusVO status = loginAttemptService.getAttemptStatus(ip);
             return ApiResponse.fail(401, "登录失败，请检查账号或密码", status);
         }

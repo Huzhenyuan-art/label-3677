@@ -2,6 +2,7 @@
     'use strict';
 
     var overviewChart = null;
+    var loginTrendChart = null;
     var cachedMenus = [];
     var currentOverview = null;
     var currentMenu = {
@@ -78,6 +79,18 @@
         pendingForceLogoutUsername: '',
         refreshTimer: null,
         refreshInterval: 10000
+    };
+
+    var loginLogState = {
+        page: 1,
+        size: 10,
+        username: '',
+        loginStatus: null,
+        clientIp: '',
+        startTime: '',
+        endTime: '',
+        total: 0,
+        pages: 0
     };
 
     function startIdleRemainingTimer() {
@@ -546,6 +559,10 @@
             renderOnlineSessionsScene();
             return;
         }
+        if (currentMenu.path === '/login-logs') {
+            renderLoginLogsScene();
+            return;
+        }
 
         renderGenericScene();
     }
@@ -568,12 +585,18 @@
         ]);
 
         setPrimaryPanelTitle('系统趋势');
-        $('#primary-panel-body').html('<canvas id="overviewChart" height="180"></canvas>');
+        $('#primary-panel-body').html(
+            '<canvas id="overviewChart" height="180"></canvas>' +
+            '<hr class="my-3">' +
+            '<h6 class="font-weight-bold mb-2"><i class="fas fa-chart-line mr-1"></i>近七日登录趋势</h6>' +
+            '<canvas id="loginTrendChart" height="200"></canvas>'
+        );
         renderChart({
             userCount: Number(overview.userCount || 0),
             menuCount: Number(overview.menuCount || menuStats.total || 0),
             onlineSessions: Number(overview.onlineSessions || 0)
         });
+        fetchAndRenderLoginTrend();
 
         $('#dynamic-panel-title').text('运行状态');
         renderDashboardPanel(overview, menuStats);
@@ -2165,11 +2188,18 @@
     }
 
     function destroyOverviewChart() {
-        if (!overviewChart) {
-            return;
+        if (overviewChart) {
+            overviewChart.destroy();
+            overviewChart = null;
         }
-        overviewChart.destroy();
-        overviewChart = null;
+        destroyLoginTrendChart();
+    }
+
+    function destroyLoginTrendChart() {
+        if (loginTrendChart) {
+            loginTrendChart.destroy();
+            loginTrendChart = null;
+        }
     }
 
     function renderChart(data) {
@@ -3400,6 +3430,313 @@
             clearInterval(onlineSessionState.refreshTimer);
             onlineSessionState.refreshTimer = null;
         }
+    }
+
+    function fetchAndRenderLoginTrend() {
+        $.get('/api/login-logs/trend', function (resp) {
+            if (!resp || Number(resp.code) !== 0 || !Array.isArray(resp.data)) {
+                return;
+            }
+            var context = document.getElementById('loginTrendChart');
+            if (!context) {
+                return;
+            }
+            destroyLoginTrendChart();
+
+            var labels = [];
+            var successData = [];
+            var failData = [];
+            resp.data.forEach(function (item) {
+                labels.push(item.date ? item.date.substring(5) : '');
+                successData.push(Number(item.successCount || 0));
+                failData.push(Number(item.failCount || 0));
+            });
+
+            loginTrendChart = new Chart(context, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '登录成功',
+                            data: successData,
+                            borderColor: '#5c9d84',
+                            backgroundColor: 'rgba(92,157,132,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '登录失败',
+                            data: failData,
+                            borderColor: '#e05555',
+                            backgroundColor: 'rgba(224,85,85,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 },
+                            grid: { color: 'rgba(15, 23, 42, 0.08)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    function renderLoginLogsScene() {
+        destroyOverviewChart();
+        bindLoginLogEvents();
+
+        setHero(
+            '登录日志',
+            '查看系统登录记录，支持按用户名、IP、状态与时间范围筛选，可导出 CSV。',
+            ['安全审计', '登录追踪', 'CSV导出']
+        );
+
+        renderOverviewCards([
+            { label: '日志总数', value: loginLogState.total || '-', icon: 'fas fa-sign-in-alt', tone: 'tone-info', note: '系统所有登录记录' },
+            { label: '当前页码', value: loginLogState.page, icon: 'fas fa-file-alt', tone: 'tone-success', note: '分页查询' },
+            { label: '每页条数', value: loginLogState.size, icon: 'fas fa-list-ol', tone: 'tone-warning', note: '默认每页10条' },
+            { label: '权限标识', value: 'loginLog:view', icon: 'fas fa-key', tone: 'tone-danger', note: '接口鉴权码' }
+        ]);
+
+        setPrimaryPanelTitle('登录日志列表');
+
+        var searchHtml = '' +
+            '<div class="login-log-search-bar">' +
+            '<form id="login-log-search-form" class="form-inline" novalidate>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<input type="text" id="lls-username" class="form-control form-control-sm" placeholder="用户名" maxlength="64" value="' + escapeHtml(loginLogState.username) + '">' +
+            '</div>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<select id="lls-status" class="form-control form-control-sm">' +
+            '<option value="">全部状态</option>' +
+            '<option value="1"' + (loginLogState.loginStatus === 1 ? ' selected' : '') + '>成功</option>' +
+            '<option value="0"' + (loginLogState.loginStatus === 0 ? ' selected' : '') + '>失败</option>' +
+            '</select>' +
+            '</div>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<input type="text" id="lls-ip" class="form-control form-control-sm" placeholder="来源IP" maxlength="64" value="' + escapeHtml(loginLogState.clientIp) + '">' +
+            '</div>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<label class="mr-1 text-sm">开始时间:</label>' +
+            '<input type="datetime-local" id="lls-start-time" class="form-control form-control-sm" value="' + escapeHtml(loginLogState.startTime || '') + '">' +
+            '</div>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<label class="mr-1 text-sm">结束时间:</label>' +
+            '<input type="datetime-local" id="lls-end-time" class="form-control form-control-sm" value="' + escapeHtml(loginLogState.endTime || '') + '">' +
+            '</div>' +
+            '<button type="submit" class="btn btn-primary btn-sm mr-2 mb-2"><i class="fas fa-search mr-1"></i>查询</button>' +
+            '<button type="button" id="lls-reset-btn" class="btn btn-outline-secondary btn-sm mr-2 mb-2">重置</button>' +
+            '<button type="button" id="lls-export-btn" class="btn btn-outline-success btn-sm mb-2"><i class="fas fa-file-csv mr-1"></i>导出CSV</button>' +
+            '</form>' +
+            '</div>' +
+            '<div class="table-responsive" id="login-log-table-container"></div>' +
+            '<div id="login-log-pagination" class="login-log-pagination-bar"></div>';
+        $('#primary-panel-body').html(searchHtml);
+
+        $('#dynamic-panel-title').text('操作说明');
+        $('#dynamic-content').html(
+            '<div class="status-list">' +
+            '<div class="status-item"><span>用户名筛选</span><span class="badge badge-soft-success">按用户名模糊搜索</span></div>' +
+            '<div class="status-item"><span>IP筛选</span><span class="badge badge-soft-info">按来源IP模糊搜索</span></div>' +
+            '<div class="status-item"><span>状态筛选</span><span class="badge badge-soft-warning">成功/失败记录</span></div>' +
+            '<div class="status-item"><span>时间筛选</span><span class="badge badge-soft-primary">支持自定义时间范围</span></div>' +
+            '<div class="status-item"><span>CSV导出</span><span class="badge badge-soft-danger">按当前筛选条件导出</span></div>' +
+            '</div>' +
+            '<div class="mt-3 text-muted text-sm">登录日志记录每次登录成败、来源IP与失败原因，便于安全审计和异常追溯。</div>'
+        );
+
+        fetchLoginLogPage();
+    }
+
+    function bindLoginLogEvents() {
+        $(document).off('submit.loginLogSearch').on('submit.loginLogSearch', '#login-log-search-form', function (e) {
+            e.preventDefault();
+            loginLogState.username = $.trim($('#lls-username').val());
+            var statusVal = $('#lls-status').val();
+            loginLogState.loginStatus = statusVal !== '' ? Number(statusVal) : null;
+            loginLogState.clientIp = $.trim($('#lls-ip').val());
+            loginLogState.startTime = $('#lls-start-time').val() ? $('#lls-start-time').val().replace('T', ' ') + ':00' : '';
+            loginLogState.endTime = $('#lls-end-time').val() ? $('#lls-end-time').val().replace('T', ' ') + ':00' : '';
+            loginLogState.page = 1;
+            fetchLoginLogPage();
+        });
+
+        $(document).off('click.loginLogReset').on('click.loginLogReset', '#lls-reset-btn', function () {
+            loginLogState.username = '';
+            loginLogState.loginStatus = null;
+            loginLogState.clientIp = '';
+            loginLogState.startTime = '';
+            loginLogState.endTime = '';
+            loginLogState.page = 1;
+            $('#lls-username').val('');
+            $('#lls-status').val('');
+            $('#lls-ip').val('');
+            $('#lls-start-time').val('');
+            $('#lls-end-time').val('');
+            fetchLoginLogPage();
+        });
+
+        $(document).off('click.loginLogExport').on('click.loginLogExport', '#lls-export-btn', function () {
+            var params = buildLoginLogExportParams();
+            var queryParts = [];
+            for (var key in params) {
+                if (params.hasOwnProperty(key) && params[key] !== '' && params[key] !== null && params[key] !== undefined) {
+                    queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key]));
+                }
+            }
+            var url = '/api/login-logs/export' + (queryParts.length ? '?' + queryParts.join('&') : '');
+            window.open(url, '_blank');
+        });
+
+        $(document).off('click.loginLogPage').on('click.loginLogPage', '.login-log-page-btn', function () {
+            var p = Number($(this).data('page'));
+            if (p >= 1 && p <= loginLogState.pages) {
+                loginLogState.page = p;
+                fetchLoginLogPage();
+            }
+        });
+    }
+
+    function buildLoginLogExportParams() {
+        var params = {};
+        if (loginLogState.username) params.username = loginLogState.username;
+        if (loginLogState.loginStatus !== null) params.loginStatus = loginLogState.loginStatus;
+        if (loginLogState.clientIp) params.clientIp = loginLogState.clientIp;
+        if (loginLogState.startTime) params.startTime = loginLogState.startTime;
+        if (loginLogState.endTime) params.endTime = loginLogState.endTime;
+        return params;
+    }
+
+    function fetchLoginLogPage() {
+        var params = { page: loginLogState.page, size: loginLogState.size };
+        if (loginLogState.username) params.username = loginLogState.username;
+        if (loginLogState.loginStatus !== null) params.loginStatus = loginLogState.loginStatus;
+        if (loginLogState.clientIp) params.clientIp = loginLogState.clientIp;
+        if (loginLogState.startTime) params.startTime = loginLogState.startTime;
+        if (loginLogState.endTime) params.endTime = loginLogState.endTime;
+
+        $.ajax({
+            url: '/api/login-logs',
+            method: 'GET',
+            data: params,
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    AppCommon.showToast(resp ? resp.message : '加载登录日志失败', 'bg-danger');
+                    return;
+                }
+                var page = resp.data;
+                loginLogState.total = page.total || 0;
+                loginLogState.pages = page.pages || 0;
+                renderLoginLogTable(page.records || []);
+                renderLoginLogPagination();
+                updateLoginLogOverviewCards();
+            }
+        });
+    }
+
+    function renderLoginLogTable(records) {
+        if (!records.length) {
+            $('#login-log-table-container').html('<div class="text-center text-muted py-4">暂无登录日志</div>');
+            return;
+        }
+
+        var html = '<table class="table table-sm table-hover mb-0 login-log-table">' +
+            '<thead><tr>' +
+            '<th>ID</th><th>用户名</th><th>登录状态</th><th>来源IP</th><th>失败原因</th><th>登录时间</th>' +
+            '</tr></thead><tbody>';
+
+        records.forEach(function (log) {
+            var statusBadge = log.loginStatus === 1
+                ? '<span class="badge badge-soft-success">成功</span>'
+                : '<span class="badge badge-soft-danger">失败</span>';
+
+            html += '<tr>' +
+                '<td>' + escapeHtml(String(log.id)) + '</td>' +
+                '<td>' + escapeHtml(log.username || '-') + '</td>' +
+                '<td>' + statusBadge + '</td>' +
+                '<td>' + escapeHtml(log.clientIp || '-') + '</td>' +
+                '<td>' + (log.loginStatus === 0 ? escapeHtml(log.failReason || '-') : '<span class="text-muted">-</span>') + '</td>' +
+                '<td>' + escapeHtml(formatDatetime(log.loginAt)) + '</td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table>';
+        $('#login-log-table-container').html(html);
+    }
+
+    function renderLoginLogPagination() {
+        var total = loginLogState.total;
+        var pages = loginLogState.pages;
+        var current = loginLogState.page;
+
+        if (pages <= 1) {
+            $('#login-log-pagination').html('<span class="text-muted text-sm">共 ' + total + ' 条记录</span>');
+            return;
+        }
+
+        var html = '<div class="d-flex align-items-center justify-content-between flex-wrap">' +
+            '<span class="text-muted text-sm">共 ' + total + ' 条 / 第 ' + current + ' 页 / 共 ' + pages + ' 页</span>' +
+            '<div class="btn-group btn-group-sm">';
+
+        if (current > 1) {
+            html += '<button class="btn btn-outline-secondary login-log-page-btn" data-page="' + (current - 1) + '"><i class="fas fa-chevron-left"></i></button>';
+        }
+
+        var start = Math.max(1, current - 2);
+        var end = Math.min(pages, current + 2);
+
+        if (start > 1) {
+            html += '<button class="btn btn-outline-secondary login-log-page-btn" data-page="1">1</button>';
+            if (start > 2) html += '<span class="btn btn-outline-secondary disabled">...</span>';
+        }
+
+        for (var i = start; i <= end; i++) {
+            if (i === current) {
+                html += '<button class="btn btn-primary login-log-page-btn" data-page="' + i + '">' + i + '</button>';
+            } else {
+                html += '<button class="btn btn-outline-secondary login-log-page-btn" data-page="' + i + '">' + i + '</button>';
+            }
+        }
+
+        if (end < pages) {
+            if (end < pages - 1) html += '<span class="btn btn-outline-secondary disabled">...</span>';
+            html += '<button class="btn btn-outline-secondary login-log-page-btn" data-page="' + pages + '">' + pages + '</button>';
+        }
+
+        if (current < pages) {
+            html += '<button class="btn btn-outline-secondary login-log-page-btn" data-page="' + (current + 1) + '"><i class="fas fa-chevron-right"></i></button>';
+        }
+
+        html += '</div></div>';
+        $('#login-log-pagination').html(html);
+    }
+
+    function updateLoginLogOverviewCards() {
+        renderOverviewCards([
+            { label: '日志总数', value: loginLogState.total || '-', icon: 'fas fa-sign-in-alt', tone: 'tone-info', note: '系统所有登录记录' },
+            { label: '当前页码', value: loginLogState.page, icon: 'fas fa-file-alt', tone: 'tone-success', note: '分页查询' },
+            { label: '每页条数', value: loginLogState.size, icon: 'fas fa-list-ol', tone: 'tone-warning', note: '默认每页10条' },
+            { label: '权限标识', value: 'loginLog:view', icon: 'fas fa-key', tone: 'tone-danger', note: '接口鉴权码' }
+        ]);
     }
 
 })(window, jQuery);

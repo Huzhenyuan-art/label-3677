@@ -58,6 +58,7 @@ public class StartupDataInitializer implements CommandLineRunner {
     private void initMenus() {
         if (sysMenuService.count() > 0) {
             ensureOnlineSessionMenu();
+            ensureLoginLogMenu();
             return;
         }
 
@@ -75,8 +76,9 @@ public class StartupDataInitializer implements CommandLineRunner {
 
         Long logMenuId = m6.getId();
         SysMenu m7 = buildMenu(logMenuId, "操作日志", "/operation-logs", "fas fa-clipboard-list", "operationLog:view", 1, 1);
+        SysMenu m10 = buildMenu(logMenuId, "登录日志", "/login-logs", "fas fa-sign-in-alt", "loginLog:view", 2, 1);
 
-        sysMenuService.saveBatch(Arrays.asList(m3, m4, m5, m7, m8, m9));
+        sysMenuService.saveBatch(Arrays.asList(m3, m4, m5, m7, m8, m9, m10));
         log.info("初始化菜单数据完成");
     }
 
@@ -113,6 +115,41 @@ public class StartupDataInitializer implements CommandLineRunner {
         );
         sysMenuService.save(onlineSessionMenu);
         log.info("补全在线会话菜单完成");
+    }
+
+    private void ensureLoginLogMenu() {
+        SysMenu existing = sysMenuService.lambdaQuery()
+                .eq(SysMenu::getPermCode, "loginLog:view")
+                .one();
+        if (existing != null) {
+            return;
+        }
+
+        SysMenu logMenu = sysMenuService.lambdaQuery()
+                .eq(SysMenu::getPermCode, "log:root")
+                .one();
+        if (logMenu == null) {
+            return;
+        }
+
+        SysMenu lastMenu = sysMenuService.lambdaQuery()
+                .eq(SysMenu::getParentId, logMenu.getId())
+                .orderByDesc(SysMenu::getSortOrder)
+                .last("limit 1")
+                .one();
+        Integer maxSort = lastMenu != null ? lastMenu.getSortOrder() : 0;
+
+        SysMenu loginLogMenu = buildMenu(
+                logMenu.getId(),
+                "登录日志",
+                "/login-logs",
+                "fas fa-sign-in-alt",
+                "loginLog:view",
+                maxSort != null ? maxSort + 1 : 99,
+                1
+        );
+        sysMenuService.save(loginLogMenu);
+        log.info("补全登录日志菜单完成");
     }
 
     private void initRoles() {
