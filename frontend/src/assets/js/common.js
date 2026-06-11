@@ -125,13 +125,56 @@
         $('#global-loading').addClass('d-none');
     }
 
-    function showToast(message, typeClass) {
-        var toast = $('#appToast');
-        var header = toast.find('.toast-header');
-        header.removeClass('bg-primary bg-danger bg-warning bg-success');
-        header.addClass(typeClass || 'bg-primary');
-        $('#appToastBody').text(message || '操作完成');
-        toast.toast('show');
+    var toastQueue = [];
+    var toastIdCounter = 0;
+    var DEFAULT_TOAST_DURATION = 2600;
+
+    function showToast(message, typeClass, duration) {
+        var id = 'toast-' + (++toastIdCounter);
+        var toastDuration = duration || DEFAULT_TOAST_DURATION;
+        var type = typeClass || 'bg-primary';
+
+        var toastHtml =
+            '<div id="' + id + '" class="toast toast-item" role="alert" aria-live="assertive" aria-atomic="true" data-delay="' + toastDuration + '">' +
+            '  <div class="toast-header ' + type + ' text-white">' +
+            '    <strong class="mr-auto">系统提示</strong>' +
+            '    <button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast" aria-label="Close">' +
+            '      <span aria-hidden="true">&times;</span>' +
+            '    </button>' +
+            '  </div>' +
+            '  <div class="toast-body">' + escapeHtml(message || '操作完成') + '</div>' +
+            '</div>';
+
+        var container = $('.toast-container');
+        if (!container.length) {
+            container = $('<div class="toast-container p-3"></div>').appendTo('body');
+        }
+
+        var toastEl = $(toastHtml).prependTo(container);
+
+        toastEl.toast({
+            delay: toastDuration,
+            autohide: true
+        });
+
+        toastEl.on('hidden.bs.toast', function () {
+            $(this).remove();
+            var idx = toastQueue.indexOf(id);
+            if (idx > -1) {
+                toastQueue.splice(idx, 1);
+            }
+        });
+
+        toastEl.toast('show');
+        toastQueue.push(id);
+
+        return id;
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
     }
 
     function redirectToLogin() {
@@ -301,6 +344,7 @@
         DEFAULT_IDLE_TIMEOUT: DEFAULT_IDLE_TIMEOUT,
         MIN_IDLE_TIMEOUT: MIN_IDLE_TIMEOUT,
         MAX_IDLE_TIMEOUT: MAX_IDLE_TIMEOUT,
+        DEFAULT_TOAST_DURATION: DEFAULT_TOAST_DURATION,
         showToast: showToast,
         showLoading: showLoading,
         hideLoading: hideLoading,
