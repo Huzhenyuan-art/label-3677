@@ -448,6 +448,15 @@
         });
     }
 
+    function lockScreenKeyDownHandler(e) {
+        if (!$('#lock-screen').hasClass('d-none')) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }
+
     function showLockScreen() {
         var lockScreen = $('#lock-screen');
         if (!lockScreen.length) {
@@ -459,6 +468,21 @@
         $('#unlock-password').val('');
         lockScreen.removeClass('d-none');
         $('body').addClass('lock-mode');
+
+        $('.modal').each(function () {
+            var inst = $(this).data('bs.modal');
+            if (inst) {
+                inst._config.keyboard = false;
+                inst._config.backdrop = 'static';
+            }
+        });
+
+        $(document).off('keydown.lockScreenEsc').on('keydown.lockScreenEsc', lockScreenKeyDownHandler);
+
+        setTimeout(function () {
+            $('#unlock-password').focus();
+        }, 100);
+
         AppCommon.stopIdleMonitoring();
     }
 
@@ -2413,6 +2437,16 @@
                 }
                 $('#lock-screen').addClass('d-none');
                 $('body').removeClass('lock-mode');
+                $(document).off('keydown.lockScreenEsc');
+
+                $('.modal').each(function () {
+                    var inst = $(this).data('bs.modal');
+                    if (inst) {
+                        inst._config.keyboard = true;
+                        inst._config.backdrop = true;
+                    }
+                });
+
                 AppCommon.showToast('解锁成功', 'bg-success');
                 startIdleMonitor();
                 if (currentMenu) {
