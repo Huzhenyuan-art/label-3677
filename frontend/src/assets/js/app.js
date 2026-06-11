@@ -224,6 +224,7 @@
         stopTokenCountdown();
         stopOverviewRefresh();
         stopOnlineSessionRefresh();
+        localStorage.removeItem(AppCommon.STORAGE_KEYS.LOCKED);
         AppCommon.clearAuth();
         setTimeout(AppCommon.redirectToLogin, 800);
     }
@@ -256,6 +257,12 @@
             window.AppDashboard = {
                 showLockScreen: showLockScreen
             };
+
+            var locked = localStorage.getItem(AppCommon.STORAGE_KEYS.LOCKED);
+            if (locked === '1') {
+                AppCommon.stopIdleMonitoring();
+                showLockScreen();
+            }
         } catch (err) {
             AppCommon.hideLoading();
             console.error('App init failed:', err);
@@ -293,6 +300,7 @@
             stopOnlineSessionRefresh();
             localStorage.removeItem(AppCommon.STORAGE_KEYS.IDLE_TIMEOUT);
             localStorage.removeItem(AppCommon.STORAGE_KEYS.IDLE_LAST_ACTIVITY);
+            localStorage.removeItem(AppCommon.STORAGE_KEYS.LOCKED);
             AppCommon.clearAuth();
             AppCommon.showToast('已退出登录', 'bg-primary');
             setTimeout(AppCommon.redirectToLogin, 250);
@@ -463,6 +471,7 @@
             AppCommon.showToast('锁屏组件未加载，请刷新页面', 'bg-danger');
             return;
         }
+        localStorage.setItem(AppCommon.STORAGE_KEYS.LOCKED, '1');
         var user = AppCommon.parseJson(localStorage.getItem(AppCommon.STORAGE_KEYS.USER), {});
         $('#lock-user').text(user.nickname || user.username || '管理员');
         $('#unlock-password').val('');
@@ -2435,6 +2444,7 @@
                     AppCommon.showToast(resp ? resp.message : '解锁失败', 'bg-danger');
                     return;
                 }
+                localStorage.removeItem(AppCommon.STORAGE_KEYS.LOCKED);
                 $('#lock-screen').addClass('d-none');
                 $('body').removeClass('lock-mode');
                 $(document).off('keydown.lockScreenEsc');

@@ -10,6 +10,15 @@
     <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
+<script>
+(function () {
+    try {
+        if (localStorage.getItem('admin_locked') === '1') {
+            document.body.className += ' lock-mode';
+        }
+    } catch (e) {}
+})();
+</script>
 <div class="wrapper">
     <nav class="main-header navbar navbar-expand navbar-white navbar-light shadow-sm">
         <ul class="navbar-nav">

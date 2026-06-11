@@ -567,6 +567,10 @@ h6 {
     display: flex !important;
 }
 
+body.lock-mode #lock-screen {
+    display: flex !important;
+}
+
 body.lock-mode {
     overflow: hidden;
 }
