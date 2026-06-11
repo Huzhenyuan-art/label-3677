@@ -96,6 +96,30 @@
         pages: 0
     };
 
+    var userNoticeState = {
+        page: 1,
+        size: 10,
+        noticeType: null,
+        readStatus: null,
+        total: 0,
+        pages: 0,
+        unreadCount: 0,
+        refreshTimer: null,
+        refreshInterval: 60000
+    };
+
+    var adminNoticeState = {
+        page: 1,
+        size: 10,
+        title: '',
+        noticeType: null,
+        noticeStatus: null,
+        total: 0,
+        pages: 0,
+        pendingDeleteId: null,
+        pendingEditId: null
+    };
+
     function startIdleRemainingTimer() {
         stopIdleRemainingTimer();
         updateIdleRemainingText();
@@ -309,6 +333,119 @@
             var path = $(this).attr('data-menu-path');
             handleBreadcrumbClick(path);
         });
+
+        $(document).off('click.noticeBell').on('click.noticeBell', '#notice-bell-btn', function (event) {
+            event.preventDefault();
+            openNoticeCenter();
+        });
+
+        $(document).off('click.ncMarkAll').on('click.ncMarkAll', '#nc-mark-all-btn', function () {
+            markAllNoticesAsRead();
+        });
+
+        $(document).off('change.ncType').on('change.ncType', '#nc-type-filter', function () {
+            var val = $(this).val();
+            userNoticeState.noticeType = val !== '' ? Number(val) : null;
+            userNoticeState.page = 1;
+            fetchUserNoticePage();
+        });
+
+        $(document).off('change.ncRead').on('change.ncRead', '#nc-read-filter', function () {
+            var val = $(this).val();
+            userNoticeState.readStatus = val !== '' ? Number(val) : null;
+            userNoticeState.page = 1;
+            fetchUserNoticePage();
+        });
+
+        $(document).off('click.ncPage').on('click.ncPage', '.nc-page-btn', function () {
+            var p = Number($(this).data('page'));
+            if (p >= 1 && p <= userNoticeState.pages) {
+                userNoticeState.page = p;
+                fetchUserNoticePage();
+            }
+        });
+
+        $(document).off('click.ncItem').on('click.ncItem', '.notice-item', function () {
+            var id = $(this).data('id');
+            openNoticeDetail(id);
+        });
+
+        $(document).off('submit.noticeForm').on('submit.noticeForm', '#notice-form', function (e) {
+            e.preventDefault();
+            submitNoticeForm(true);
+        });
+
+        $(document).off('click.nfSaveDraft').on('click.nfSaveDraft', '#nf-save-draft-btn', function () {
+            submitNoticeForm(false);
+        });
+
+        $(document).off('click.ncAdd').on('click.ncAdd', '#nc-add-btn', function () {
+            openNoticeForm(null);
+        });
+
+        $(document).off('click.ncEdit').on('click.ncEdit', '.btn-notice-edit', function () {
+            var row = $(this).closest('tr');
+            var id = row.data('id');
+            openNoticeForm(id);
+        });
+
+        $(document).off('click.ncPublish').on('click.ncPublish', '.btn-notice-publish', function () {
+            var id = $(this).closest('tr').data('id');
+            publishNotice(id);
+        });
+
+        $(document).off('click.ncRecall').on('click.ncRecall', '.btn-notice-recall', function () {
+            var id = $(this).closest('tr').data('id');
+            recallNotice(id);
+        });
+
+        $(document).off('click.ncPin').on('click.ncPin', '.btn-notice-pin', function () {
+            var id = $(this).closest('tr').data('id');
+            toggleNoticePin(id);
+        });
+
+        $(document).off('click.ncDelete').on('click.ncDelete', '.btn-notice-delete', function () {
+            adminNoticeState.pendingDeleteId = $(this).closest('tr').data('id');
+            $('#notice-delete-modal').modal('show');
+        });
+
+        $(document).off('click.ncDeleteConfirm').on('click.ncDeleteConfirm', '#notice-delete-confirm-btn', function () {
+            if (adminNoticeState.pendingDeleteId) {
+                deleteNotice(adminNoticeState.pendingDeleteId);
+            }
+            $('#notice-delete-modal').modal('hide');
+            adminNoticeState.pendingDeleteId = null;
+        });
+
+        $(document).off('submit.ncSearch').on('submit.ncSearch', '#notice-search-form', function (e) {
+            e.preventDefault();
+            adminNoticeState.title = $.trim($('#ns-title').val());
+            var typeVal = $('#ns-type').val();
+            adminNoticeState.noticeType = typeVal !== '' ? Number(typeVal) : null;
+            var statusVal = $('#ns-status').val();
+            adminNoticeState.noticeStatus = statusVal !== '' ? Number(statusVal) : null;
+            adminNoticeState.page = 1;
+            fetchAdminNoticePage();
+        });
+
+        $(document).off('click.ncReset').on('click.ncReset', '#ns-reset-btn', function () {
+            adminNoticeState.title = '';
+            adminNoticeState.noticeType = null;
+            adminNoticeState.noticeStatus = null;
+            adminNoticeState.page = 1;
+            $('#ns-title').val('');
+            $('#ns-type').val('');
+            $('#ns-status').val('');
+            fetchAdminNoticePage();
+        });
+
+        $(document).off('click.ncAdminPage').on('click.ncAdminPage', '.notice-admin-page-btn', function () {
+            var p = Number($(this).data('page'));
+            if (p >= 1 && p <= adminNoticeState.pages) {
+                adminNoticeState.page = p;
+                fetchAdminNoticePage();
+            }
+        });
     }
 
     function showLockScreen() {
@@ -333,6 +470,8 @@
         fetchMenus();
         fetchUser();
         fetchOverview();
+        fetchUnreadNoticeCount();
+        startNoticeUnreadRefresh();
     }
 
     function renderUserFromStorage() {
@@ -708,6 +847,10 @@
         }
         if (currentMenu.path === '/login-logs') {
             renderLoginLogsScene();
+            return;
+        }
+        if (currentMenu.path === '/notices') {
+            renderNoticesScene();
             return;
         }
 
@@ -4030,6 +4173,595 @@
             { label: '每页条数', value: loginLogState.size, icon: 'fas fa-list-ol', tone: 'tone-warning', note: '默认每页10条' },
             { label: '权限标识', value: 'loginLog:view', icon: 'fas fa-key', tone: 'tone-danger', note: '接口鉴权码' }
         ]);
+    }
+
+    function fetchUnreadNoticeCount() {
+        $.ajax({
+            url: '/api/user/notices/unread-count',
+            method: 'GET',
+            skipGlobalLoading: true,
+            success: function (resp) {
+                if (resp && Number(resp.code) === 0 && resp.data != null) {
+                    var count = Number(resp.data) || 0;
+                    userNoticeState.unreadCount = count;
+                    updateNoticeUnreadBadge(count);
+                }
+            }
+        });
+    }
+
+    function updateNoticeUnreadBadge(count) {
+        var badge = $('#notice-unread-badge');
+        if (count > 0) {
+            badge.removeClass('d-none');
+            badge.text(count > 99 ? '99+' : String(count));
+        } else {
+            badge.addClass('d-none');
+            badge.text('0');
+        }
+    }
+
+    function startNoticeUnreadRefresh() {
+        stopNoticeUnreadRefresh();
+        userNoticeState.refreshTimer = setInterval(function () {
+            fetchUnreadNoticeCount();
+        }, userNoticeState.refreshInterval);
+    }
+
+    function stopNoticeUnreadRefresh() {
+        if (userNoticeState.refreshTimer) {
+            clearInterval(userNoticeState.refreshTimer);
+            userNoticeState.refreshTimer = null;
+        }
+    }
+
+    function openNoticeCenter() {
+        userNoticeState.page = 1;
+        userNoticeState.noticeType = null;
+        userNoticeState.readStatus = null;
+        $('#nc-type-filter').val('');
+        $('#nc-read-filter').val('');
+        $('#notice-center-modal').modal('show');
+        fetchUserNoticePage();
+        fetchUnreadNoticeCount();
+    }
+
+    function fetchUserNoticePage() {
+        var params = { page: userNoticeState.page, size: userNoticeState.size };
+        if (userNoticeState.noticeType != null) params.noticeType = userNoticeState.noticeType;
+        if (userNoticeState.readStatus != null) params.readStatus = userNoticeState.readStatus;
+
+        $.ajax({
+            url: '/api/user/notices',
+            method: 'GET',
+            data: params,
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    $('#notice-list-container').html('<div class="text-center text-muted py-5">加载失败，请重试</div>');
+                    return;
+                }
+                var page = resp.data;
+                userNoticeState.total = page.total || 0;
+                userNoticeState.pages = page.pages || 0;
+                renderUserNoticeList(page.records || []);
+                renderUserNoticePagination();
+            }
+        });
+    }
+
+    function renderUserNoticeList(records) {
+        var container = $('#notice-list-container');
+        if (!records.length) {
+            container.html('<div class="text-center text-muted py-5"><i class="fas fa-inbox fa-3x mb-3 d-block"></i>暂无通知</div>');
+            return;
+        }
+        var html = '';
+        records.forEach(function (n) {
+            var isUnread = Number(n.isRead) !== 1;
+            var pinnedClass = Number(n.isPinned) === 1 ? ' notice-pinned' : '';
+            var unreadClass = isUnread ? ' notice-unread' : '';
+            var typeLabel = Number(n.noticeType) === 2 ? '公告' : '通知';
+            var typeClass = Number(n.noticeType) === 2 ? 'badge-danger' : 'badge-info';
+            var pinnedIcon = Number(n.isPinned) === 1 ? '<i class="fas fa-thumbtack text-warning mr-1"></i>' : '';
+            var unreadDot = isUnread ? '<span class="notice-unread-dot"></span>' : '';
+
+            html += '' +
+                '<div class="notice-item' + pinnedClass + unreadClass + '" data-id="' + n.id + '">' +
+                '<div class="notice-item-header">' +
+                '<div class="notice-item-title">' + unreadDot + pinnedIcon + escapeHtml(n.title) + '</div>' +
+                '<span class="badge badge-sm ' + typeClass + '">' + typeLabel + '</span>' +
+                '</div>' +
+                '<div class="notice-item-summary text-muted text-sm">' +
+                escapeHtml(String(n.content || '').substring(0, 80)) +
+                (String(n.content || '').length > 80 ? '...' : '') +
+                '</div>' +
+                '<div class="notice-item-footer text-muted text-xs">' +
+                '<span><i class="fas fa-user mr-1"></i>' + escapeHtml(n.publisherNickname || '系统') + '</span>' +
+                '<span><i class="far fa-clock ml-3 mr-1"></i>' + formatTime(n.publishedAt) + '</span>' +
+                (isUnread ? '<span class="badge badge-warning ml-3">未读</span>' : '<span class="text-muted ml-3">已读</span>') +
+                '</div>' +
+                '</div>';
+        });
+        container.html(html);
+    }
+
+    function renderUserNoticePagination() {
+        var total = userNoticeState.total;
+        var current = userNoticeState.page;
+        var pages = userNoticeState.pages;
+        $('#nc-unread-label').text(userNoticeState.unreadCount + ' 条未读');
+
+        if (pages <= 1) {
+            $('#nc-pagination').html('<span class="text-muted text-sm">共 ' + total + ' 条</span>');
+            return;
+        }
+
+        var html = '<div class="d-inline-flex align-items-center">';
+        html += '<span class="text-muted text-sm mr-3">共 ' + total + ' 条 / 第 ' + current + ' 页 / 共 ' + pages + ' 页</span>';
+        html += '<div class="btn-group btn-group-sm">';
+
+        if (current > 1) {
+            html += '<button class="btn btn-outline-secondary nc-page-btn" data-page="' + (current - 1) + '"><i class="fas fa-chevron-left"></i></button>';
+        }
+
+        var start = Math.max(1, current - 2);
+        var end = Math.min(pages, current + 2);
+
+        if (start > 1) {
+            html += '<button class="btn btn-outline-secondary nc-page-btn" data-page="1">1</button>';
+            if (start > 2) html += '<span class="btn btn-outline-secondary disabled">...</span>';
+        }
+
+        for (var i = start; i <= end; i++) {
+            if (i === current) {
+                html += '<button class="btn btn-primary nc-page-btn" data-page="' + i + '">' + i + '</button>';
+            } else {
+                html += '<button class="btn btn-outline-secondary nc-page-btn" data-page="' + i + '">' + i + '</button>';
+            }
+        }
+
+        if (end < pages) {
+            if (end < pages - 1) html += '<span class="btn btn-outline-secondary disabled">...</span>';
+            html += '<button class="btn btn-outline-secondary nc-page-btn" data-page="' + pages + '">' + pages + '</button>';
+        }
+
+        if (current < pages) {
+            html += '<button class="btn btn-outline-secondary nc-page-btn" data-page="' + (current + 1) + '"><i class="fas fa-chevron-right"></i></button>';
+        }
+
+        html += '</div></div>';
+        $('#nc-pagination').html(html);
+    }
+
+    function openNoticeDetail(id) {
+        $.ajax({
+            url: '/api/user/notices/' + id,
+            method: 'GET',
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    AppCommon.showToast(resp ? resp.message : '加载公告详情失败', 'bg-danger');
+                    return;
+                }
+                var n = resp.data;
+                var typeLabel = Number(n.noticeType) === 2 ? '公告' : '通知';
+                $('#notice-detail-label').html(
+                    (Number(n.isPinned) === 1 ? '<i class="fas fa-thumbtack text-warning mr-2"></i>' : '') +
+                    escapeHtml(n.title)
+                );
+                $('#notice-detail-meta').html(
+                    '<span class="badge badge-sm ' + (Number(n.noticeType) === 2 ? 'badge-danger' : 'badge-info') + ' mr-2">' + typeLabel + '</span>' +
+                    '<i class="fas fa-user mr-1"></i>' + escapeHtml(n.publisherNickname || '系统') +
+                    '<i class="far fa-clock ml-3 mr-1"></i>' + formatTime(n.publishedAt) +
+                    (n.readAt ? '<i class="fas fa-check ml-3 mr-1 text-success"></i>阅读于 ' + formatTime(n.readAt) : '')
+                );
+                $('#notice-detail-content').html(
+                    '<div class="notice-detail-content">' + escapeHtml(n.content).replace(/\n/g, '<br>') + '</div>'
+                );
+                $('#notice-detail-modal').modal('show');
+                fetchUnreadNoticeCount();
+                fetchUserNoticePage();
+            }
+        });
+    }
+
+    function markAllNoticesAsRead() {
+        $.ajax({
+            url: '/api/user/notices/read-all',
+            method: 'PUT',
+            success: function (resp) {
+                if (resp && Number(resp.code) === 0) {
+                    AppCommon.showToast('已全部标记为已读', 'bg-success');
+                    fetchUnreadNoticeCount();
+                    fetchUserNoticePage();
+                } else {
+                    AppCommon.showToast(resp ? resp.message : '操作失败', 'bg-danger');
+                }
+            }
+        });
+    }
+
+    function renderNoticesScene() {
+        destroyAllDashboardCharts();
+
+        setHero(
+            '公告管理',
+            '管理系统通知公告，支持发布、撤回、置顶与删除操作。',
+            ['公告列表', '发布管理', '置顶操作']
+        );
+
+        renderOverviewCards([
+            { label: '公告总数', value: adminNoticeState.total || '-', icon: 'fas fa-bullhorn', tone: 'tone-info', note: '所有公告数量' },
+            { label: '当前页码', value: adminNoticeState.page, icon: 'fas fa-file-alt', tone: 'tone-success', note: '分页查询' },
+            { label: '每页条数', value: adminNoticeState.size, icon: 'fas fa-list-ol', tone: 'tone-warning', note: '默认每页10条' },
+            { label: '权限标识', value: 'notice:manage', icon: 'fas fa-key', tone: 'tone-danger', note: '接口鉴权码' }
+        ]);
+
+        setPrimaryPanelTitle('公告列表');
+        var searchHtml = '' +
+            '<div class="notice-search-bar">' +
+            '<form id="notice-search-form" class="form-inline" novalidate>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<input type="text" id="ns-title" class="form-control form-control-sm" placeholder="公告标题" maxlength="200" value="' + escapeHtml(adminNoticeState.title) + '">' +
+            '</div>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<select id="ns-type" class="form-control form-control-sm">' +
+            '<option value="">全部类型</option>' +
+            '<option value="1"' + (adminNoticeState.noticeType === 1 ? ' selected' : '') + '>通知</option>' +
+            '<option value="2"' + (adminNoticeState.noticeType === 2 ? ' selected' : '') + '>公告</option>' +
+            '</select>' +
+            '</div>' +
+            '<div class="form-group mr-2 mb-2">' +
+            '<select id="ns-status" class="form-control form-control-sm">' +
+            '<option value="">全部状态</option>' +
+            '<option value="0"' + (adminNoticeState.noticeStatus === 0 ? ' selected' : '') + '>草稿</option>' +
+            '<option value="1"' + (adminNoticeState.noticeStatus === 1 ? ' selected' : '') + '>已发布</option>' +
+            '<option value="2"' + (adminNoticeState.noticeStatus === 2 ? ' selected' : '') + '>已撤回</option>' +
+            '</select>' +
+            '</div>' +
+            '<button type="submit" class="btn btn-primary btn-sm mr-2 mb-2"><i class="fas fa-search mr-1"></i>查询</button>' +
+            '<button type="button" id="ns-reset-btn" class="btn btn-outline-secondary btn-sm mr-2 mb-2">重置</button>' +
+            '<button type="button" id="nc-add-btn" class="btn btn-success btn-sm mb-2"><i class="fas fa-plus mr-1"></i>发布公告</button>' +
+            '</form>' +
+            '</div>' +
+            '<div class="table-responsive" id="notice-table-container"></div>' +
+            '<div id="notice-pagination" class="notice-pagination-bar"></div>';
+        $('#primary-panel-body').html(searchHtml);
+
+        $('#dynamic-panel-title').text('操作说明');
+        $('#dynamic-content').html(
+            '<div class="status-list">' +
+            '<div class="status-item"><span>新建公告</span><span class="badge badge-soft-success">可保存草稿或直接发布</span></div>' +
+            '<div class="status-item"><span>发布公告</span><span class="badge badge-soft-info">草稿状态可发布</span></div>' +
+            '<div class="status-item"><span>撤回公告</span><span class="badge badge-soft-warning">已发布的公告可撤回</span></div>' +
+            '<div class="status-item"><span>置顶/取消置顶</span><span class="badge badge-soft-primary">切换公告置顶状态</span></div>' +
+            '</div>' +
+            '<div class="mt-3 text-muted text-sm">所有操作均需要 notice:manage 权限，由后端 @PreAuthorize 控制。</div>'
+        );
+
+        fetchAdminNoticePage();
+    }
+
+    function fetchAdminNoticePage() {
+        var params = { page: adminNoticeState.page, size: adminNoticeState.size };
+        if (adminNoticeState.title) params.title = adminNoticeState.title;
+        if (adminNoticeState.noticeType != null) params.noticeType = adminNoticeState.noticeType;
+        if (adminNoticeState.noticeStatus != null) params.noticeStatus = adminNoticeState.noticeStatus;
+
+        $.ajax({
+            url: '/api/admin/notices',
+            method: 'GET',
+            data: params,
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    AppCommon.showToast(resp ? resp.message : '加载公告列表失败', 'bg-danger');
+                    return;
+                }
+                var page = resp.data;
+                adminNoticeState.total = page.total || 0;
+                adminNoticeState.pages = page.pages || 0;
+                renderAdminNoticeTable(page.records || []);
+                renderAdminNoticePagination();
+                updateAdminNoticeOverviewCards();
+            }
+        });
+    }
+
+    function renderAdminNoticeTable(records) {
+        var container = $('#notice-table-container');
+        if (!records.length) {
+            container.html('<div class="text-center text-muted py-4">暂无公告数据</div>');
+            return;
+        }
+
+        var html = '<table class="table table-sm table-hover mb-0 notice-table">' +
+            '<thead><tr>' +
+            '<th>ID</th><th>标题</th><th>类型</th><th>状态</th><th>置顶</th><th>发布人</th><th>发布时间</th><th>操作</th>' +
+            '</tr></thead><tbody>';
+
+        records.forEach(function (n) {
+            var typeLabel = Number(n.noticeType) === 2 ? '公告' : '通知';
+            var typeClass = Number(n.noticeType) === 2 ? 'badge-danger' : 'badge-info';
+            var statusLabel, statusClass;
+            if (Number(n.noticeStatus) === 0) {
+                statusLabel = '草稿';
+                statusClass = 'badge-secondary';
+            } else if (Number(n.noticeStatus) === 1) {
+                statusLabel = '已发布';
+                statusClass = 'badge-success';
+            } else {
+                statusLabel = '已撤回';
+                statusClass = 'badge-warning';
+            }
+            var pinnedBadge = Number(n.isPinned) === 1
+                ? '<span class="badge badge-warning"><i class="fas fa-thumbtack mr-1"></i>已置顶</span>'
+                : '<span class="badge badge-soft-muted">否</span>';
+
+            var actionBtns = '';
+            if (Number(n.noticeStatus) === 0) {
+                actionBtns += '<button type="button" class="btn btn-outline-success btn-sm btn-notice-edit mr-1" title="编辑"><i class="fas fa-edit"></i></button>';
+                actionBtns += '<button type="button" class="btn btn-outline-primary btn-sm btn-notice-publish mr-1" title="发布"><i class="fas fa-paper-plane"></i></button>';
+            }
+            if (Number(n.noticeStatus) === 1) {
+                actionBtns += '<button type="button" class="btn btn-outline-warning btn-sm btn-notice-recall mr-1" title="撤回"><i class="fas fa-undo"></i></button>';
+                actionBtns += '<button type="button" class="btn btn-outline-info btn-sm btn-notice-pin mr-1" title="切换置顶"><i class="fas fa-thumbtack"></i></button>';
+            }
+            actionBtns += '<button type="button" class="btn btn-outline-danger btn-sm btn-notice-delete" title="删除"><i class="fas fa-trash"></i></button>';
+
+            html += '<tr data-id="' + n.id + '">' +
+                '<td>' + escapeHtml(String(n.id)) + '</td>' +
+                '<td class="notice-title-cell">' +
+                (Number(n.isPinned) === 1 ? '<i class="fas fa-thumbtack text-warning mr-1"></i>' : '') +
+                escapeHtml(n.title) +
+                '</td>' +
+                '<td><span class="badge ' + typeClass + '">' + typeLabel + '</span></td>' +
+                '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+                '<td>' + pinnedBadge + '</td>' +
+                '<td>' + escapeHtml(n.publisherNickname || '-') + '</td>' +
+                '<td>' + (n.publishedAt ? formatTime(n.publishedAt) : '-') + '</td>' +
+                '<td class="text-nowrap">' + actionBtns + '</td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table>';
+        container.html(html);
+    }
+
+    function renderAdminNoticePagination() {
+        var total = adminNoticeState.total;
+        var current = adminNoticeState.page;
+        var pages = adminNoticeState.pages;
+
+        if (!pages) {
+            $('#notice-pagination').html('');
+            return;
+        }
+
+        if (pages <= 1) {
+            $('#notice-pagination').html('<div class="text-center text-muted text-sm pt-3">共 ' + total + ' 条</div>');
+            return;
+        }
+
+        var html = '<div class="d-flex align-items-center justify-content-center pt-3">';
+        html += '<span class="text-muted text-sm mr-3">共 ' + total + ' 条 / 第 ' + current + ' 页 / 共 ' + pages + ' 页</span>';
+        html += '<div class="btn-group btn-group-sm">';
+
+        if (current > 1) {
+            html += '<button class="btn btn-outline-secondary notice-admin-page-btn" data-page="' + (current - 1) + '"><i class="fas fa-chevron-left"></i></button>';
+        }
+
+        var start = Math.max(1, current - 2);
+        var end = Math.min(pages, current + 2);
+
+        if (start > 1) {
+            html += '<button class="btn btn-outline-secondary notice-admin-page-btn" data-page="1">1</button>';
+            if (start > 2) html += '<span class="btn btn-outline-secondary disabled">...</span>';
+        }
+
+        for (var i = start; i <= end; i++) {
+            if (i === current) {
+                html += '<button class="btn btn-primary notice-admin-page-btn" data-page="' + i + '">' + i + '</button>';
+            } else {
+                html += '<button class="btn btn-outline-secondary notice-admin-page-btn" data-page="' + i + '">' + i + '</button>';
+            }
+        }
+
+        if (end < pages) {
+            if (end < pages - 1) html += '<span class="btn btn-outline-secondary disabled">...</span>';
+            html += '<button class="btn btn-outline-secondary notice-admin-page-btn" data-page="' + pages + '">' + pages + '</button>';
+        }
+
+        if (current < pages) {
+            html += '<button class="btn btn-outline-secondary notice-admin-page-btn" data-page="' + (current + 1) + '"><i class="fas fa-chevron-right"></i></button>';
+        }
+
+        html += '</div></div>';
+        $('#notice-pagination').html(html);
+    }
+
+    function updateAdminNoticeOverviewCards() {
+        renderOverviewCards([
+            { label: '公告总数', value: adminNoticeState.total || '-', icon: 'fas fa-bullhorn', tone: 'tone-info', note: '所有公告数量' },
+            { label: '当前页码', value: adminNoticeState.page, icon: 'fas fa-file-alt', tone: 'tone-success', note: '分页查询' },
+            { label: '每页条数', value: adminNoticeState.size, icon: 'fas fa-list-ol', tone: 'tone-warning', note: '默认每页10条' },
+            { label: '权限标识', value: 'notice:manage', icon: 'fas fa-key', tone: 'tone-danger', note: '接口鉴权码' }
+        ]);
+    }
+
+    function openNoticeForm(id) {
+        adminNoticeState.pendingEditId = id;
+        $('#nf-error-msg').addClass('d-none').text('');
+        if (id) {
+            $('#notice-form-label').text('编辑公告');
+            $('#nf-publish-btn').addClass('d-none');
+            $('#nf-save-draft-btn').removeClass('d-none').text('保存修改');
+            $.ajax({
+                url: '/api/admin/notices/' + id,
+                method: 'GET',
+                success: function (resp) {
+                    if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                        AppCommon.showToast(resp ? resp.message : '加载公告失败', 'bg-danger');
+                        return;
+                    }
+                    var n = resp.data;
+                    $('#nf-id').val(n.id);
+                    $('#nf-title').val(n.title);
+                    $('#nf-type').val(n.noticeType);
+                    $('#nf-pinned').val(n.isPinned);
+                    $('#nf-content').val(n.content);
+                }
+            });
+        } else {
+            $('#notice-form-label').text('发布公告');
+            $('#nf-publish-btn').removeClass('d-none').text('立即发布');
+            $('#nf-save-draft-btn').removeClass('d-none').text('保存草稿');
+            $('#nf-id').val('');
+            $('#nf-title').val('');
+            $('#nf-type').val('1');
+            $('#nf-pinned').val('0');
+            $('#nf-content').val('');
+        }
+        $('#notice-form-modal').modal('show');
+    }
+
+    function submitNoticeForm(publish) {
+        var title = $.trim($('#nf-title').val());
+        var content = $.trim($('#nf-content').val());
+        var noticeType = Number($('#nf-type').val());
+        var isPinned = Number($('#nf-pinned').val());
+        var editId = $('#nf-id').val();
+
+        if (!title) {
+            $('#nf-error-msg').removeClass('d-none').text('请输入公告标题');
+            return;
+        }
+        if (!content) {
+            $('#nf-error-msg').removeClass('d-none').text('请输入公告内容');
+            return;
+        }
+
+        var payload = {
+            title: title,
+            content: content,
+            noticeType: noticeType,
+            isPinned: isPinned
+        };
+
+        if (editId) {
+            $.ajax({
+                url: '/api/admin/notices/' + editId,
+                method: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (resp) {
+                    if (resp && Number(resp.code) === 0) {
+                        AppCommon.showToast('编辑成功', 'bg-success');
+                        $('#notice-form-modal').modal('hide');
+                        fetchAdminNoticePage();
+                    } else {
+                        $('#nf-error-msg').removeClass('d-none').text(resp ? resp.message : '编辑失败');
+                    }
+                }
+            });
+        } else {
+            $.ajax({
+                url: '/api/admin/notices',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (resp) {
+                    if (resp && Number(resp.code) === 0 && resp.data) {
+                        var newId = resp.data;
+                        if (publish) {
+                            $.ajax({
+                                url: '/api/admin/notices/' + newId + '/publish',
+                                method: 'PUT',
+                                success: function (resp2) {
+                                    if (resp2 && Number(resp2.code) === 0) {
+                                        AppCommon.showToast('发布成功', 'bg-success');
+                                        $('#notice-form-modal').modal('hide');
+                                        fetchAdminNoticePage();
+                                        fetchUnreadNoticeCount();
+                                    } else {
+                                        AppCommon.showToast('创建成功但发布失败，请在列表中手动发布', 'bg-warning');
+                                        $('#notice-form-modal').modal('hide');
+                                        fetchAdminNoticePage();
+                                    }
+                                }
+                            });
+                        } else {
+                            AppCommon.showToast('草稿已保存', 'bg-success');
+                            $('#notice-form-modal').modal('hide');
+                            fetchAdminNoticePage();
+                        }
+                    } else {
+                        $('#nf-error-msg').removeClass('d-none').text(resp ? resp.message : '创建失败');
+                    }
+                }
+            });
+        }
+    }
+
+    function publishNotice(id) {
+        $.ajax({
+            url: '/api/admin/notices/' + id + '/publish',
+            method: 'PUT',
+            success: function (resp) {
+                if (resp && Number(resp.code) === 0) {
+                    AppCommon.showToast('发布成功', 'bg-success');
+                    fetchAdminNoticePage();
+                    fetchUnreadNoticeCount();
+                } else {
+                    AppCommon.showToast(resp ? resp.message : '发布失败', 'bg-danger');
+                }
+            }
+        });
+    }
+
+    function recallNotice(id) {
+        $.ajax({
+            url: '/api/admin/notices/' + id + '/recall',
+            method: 'PUT',
+            success: function (resp) {
+                if (resp && Number(resp.code) === 0) {
+                    AppCommon.showToast('撤回成功', 'bg-success');
+                    fetchAdminNoticePage();
+                    fetchUnreadNoticeCount();
+                } else {
+                    AppCommon.showToast(resp ? resp.message : '撤回失败', 'bg-danger');
+                }
+            }
+        });
+    }
+
+    function toggleNoticePin(id) {
+        $.ajax({
+            url: '/api/admin/notices/' + id + '/pin',
+            method: 'PUT',
+            success: function (resp) {
+                if (resp && Number(resp.code) === 0) {
+                    AppCommon.showToast('操作成功', 'bg-success');
+                    fetchAdminNoticePage();
+                } else {
+                    AppCommon.showToast(resp ? resp.message : '操作失败', 'bg-danger');
+                }
+            }
+        });
+    }
+
+    function deleteNotice(id) {
+        $.ajax({
+            url: '/api/admin/notices/' + id,
+            method: 'DELETE',
+            success: function (resp) {
+                if (resp && Number(resp.code) === 0) {
+                    AppCommon.showToast('删除成功', 'bg-success');
+                    fetchAdminNoticePage();
+                    fetchUnreadNoticeCount();
+                } else {
+                    AppCommon.showToast(resp ? resp.message : '删除失败', 'bg-danger');
+                }
+            }
+        });
     }
 
 })(window, jQuery);

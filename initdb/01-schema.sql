@@ -101,3 +101,39 @@ CREATE TABLE IF NOT EXISTS sys_login_log (
   INDEX idx_client_ip (client_ip),
   INDEX idx_login_at (login_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='登录日志表';
+
+CREATE TABLE IF NOT EXISTS sys_notice (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL COMMENT '公告标题',
+  content TEXT NOT NULL COMMENT '公告内容',
+  notice_type TINYINT NOT NULL DEFAULT 1 COMMENT '公告类型（1-通知，2-公告）',
+  notice_status TINYINT NOT NULL DEFAULT 0 COMMENT '状态（0-草稿，1-已发布，2-已撤回）',
+  is_pinned TINYINT NOT NULL DEFAULT 0 COMMENT '是否置顶（0-否，1-是）',
+  publisher_id BIGINT NULL COMMENT '发布人ID',
+  publisher_username VARCHAR(64) NULL COMMENT '发布人用户名',
+  publisher_nickname VARCHAR(64) NULL COMMENT '发布人昵称',
+  published_at DATETIME NULL COMMENT '发布时间',
+  recalled_at DATETIME NULL COMMENT '撤回时间',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT chk_notice_type CHECK (notice_type IN (1, 2)),
+  CONSTRAINT chk_notice_status CHECK (notice_status IN (0, 1, 2)),
+  CONSTRAINT chk_notice_pinned CHECK (is_pinned IN (0, 1)),
+  CONSTRAINT chk_notice_deleted CHECK (deleted IN (0, 1)),
+  INDEX idx_notice_status (notice_status),
+  INDEX idx_is_pinned (is_pinned),
+  INDEX idx_published_at (published_at),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='通知公告表';
+
+CREATE TABLE IF NOT EXISTS sys_notice_read (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  notice_id BIGINT NOT NULL COMMENT '公告ID',
+  user_id BIGINT NOT NULL COMMENT '用户ID',
+  read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '阅读时间',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_notice_user (notice_id, user_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_notice_id (notice_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='通知公告已读记录表';

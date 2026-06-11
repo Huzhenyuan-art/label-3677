@@ -31,7 +31,8 @@ VALUES
   (7, 6, '操作日志', '/operation-logs', 'fas fa-clipboard-list', 'operationLog:view', 1, 1),
   (8, 2, '角色管理', '/roles', 'fas fa-user-tag', 'role:manage', 4, 1),
   (9, 2, '在线会话', '/online-sessions', 'fas fa-user-clock', 'session:view', 5, 1),
-  (10, 6, '登录日志', '/login-logs', 'fas fa-sign-in-alt', 'loginLog:view', 2, 1)
+  (10, 6, '登录日志', '/login-logs', 'fas fa-sign-in-alt', 'loginLog:view', 2, 1),
+  (11, 2, '公告管理', '/notices', 'fas fa-bullhorn', 'notice:manage', 6, 1)
 ON DUPLICATE KEY UPDATE
   title = VALUES(title),
   path = VALUES(path),

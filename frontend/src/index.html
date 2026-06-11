@@ -21,6 +21,12 @@
             </li>
         </ul>
         <ul class="navbar-nav ml-auto">
+            <li class="nav-item mr-2">
+                <a class="nav-link notice-bell-link" href="#" id="notice-bell-btn" role="button">
+                    <i class="fas fa-bell"></i>
+                    <span id="notice-unread-badge" class="notice-unread-badge d-none">0</span>
+                </a>
+            </li>
             <li class="nav-item mr-3">
                 <div id="token-countdown" class="token-countdown-wrapper">
                     <i class="fas fa-clock mr-1"></i>
@@ -504,6 +510,131 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
                 <button type="button" id="force-logout-confirm-btn" class="btn btn-danger">确认下线</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notice-center-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="notice-center-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notice-center-label">
+                    <i class="fas fa-bell mr-2"></i>通知中心
+                    <span id="nc-unread-label" class="badge badge-warning ml-2">0 条未读</span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="notice-center-toolbar p-3 border-bottom">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between">
+                        <div class="form-inline">
+                            <select id="nc-type-filter" class="form-control form-control-sm mr-2">
+                                <option value="">全部类型</option>
+                                <option value="1">通知</option>
+                                <option value="2">公告</option>
+                            </select>
+                            <select id="nc-read-filter" class="form-control form-control-sm">
+                                <option value="">全部状态</option>
+                                <option value="0">未读</option>
+                                <option value="1">已读</option>
+                            </select>
+                        </div>
+                        <button type="button" id="nc-mark-all-btn" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-check-double mr-1"></i>全部标为已读
+                        </button>
+                    </div>
+                </div>
+                <div id="notice-list-container" class="notice-list-container" style="max-height: 480px; overflow-y: auto;"></div>
+                <div id="nc-pagination" class="notice-pagination-bar p-3 border-top text-center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notice-detail-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="notice-detail-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notice-detail-label"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="notice-detail-meta" class="text-muted text-sm mb-3"></div>
+                <div id="notice-detail-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notice-form-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="notice-form-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notice-form-label">发布公告</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="notice-form" novalidate>
+                <input type="hidden" id="nf-id">
+                <div class="modal-body">
+                    <div id="nf-error-msg" class="alert alert-danger d-none py-2 mb-3" role="alert"></div>
+                    <div class="form-group">
+                        <label for="nf-title">公告标题 <span class="text-danger">*</span></label>
+                        <input id="nf-title" type="text" class="form-control" maxlength="200" placeholder="请输入公告标题" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="nf-type">公告类型 <span class="text-danger">*</span></label>
+                            <select id="nf-type" class="form-control" required>
+                                <option value="1">通知</option>
+                                <option value="2">公告</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="nf-pinned">是否置顶</label>
+                            <select id="nf-pinned" class="form-control">
+                                <option value="0">否</option>
+                                <option value="1">是</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="nf-content">公告内容 <span class="text-danger">*</span></label>
+                        <textarea id="nf-content" class="form-control" rows="8" placeholder="请输入公告内容" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" id="nf-save-draft-btn" class="btn btn-outline-secondary">保存草稿</button>
+                    <button type="submit" id="nf-publish-btn" class="btn btn-primary">立即发布</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="notice-delete-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="notice-delete-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notice-delete-label">删除确认</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="notice-delete-body">确定要删除该公告吗？</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="notice-delete-confirm-btn" class="btn btn-danger">确认删除</button>
             </div>
         </div>
     </div>
