@@ -5,6 +5,9 @@
     var loginTrendChart = null;
     var cachedMenus = [];
     var currentOverview = null;
+    var dashboardRenderTimer = null;
+    var loginTrendRequestId = 0;
+    var loginTrendLoading = false;
     var currentMenu = {
         title: '仪表盘',
         path: '/dashboard',
@@ -389,14 +392,31 @@
     }
 
     function fetchOverview() {
-        $.get('/api/dashboard/overview', function (resp) {
-            if (!resp || Number(resp.code) !== 0 || !resp.data) {
-                AppCommon.showToast(resp ? resp.message : '加载仪表盘失败', 'bg-warning');
-                return;
-            }
-            currentOverview = resp.data;
-            if (currentMenu.path === '/dashboard') {
-                renderDashboardScene();
+        $.ajax({
+            url: '/api/dashboard/overview',
+            method: 'GET',
+            timeout: 10000,
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    if (resp && resp.message) {
+                        AppCommon.showToast(resp.message, 'bg-warning');
+                    }
+                    if (currentMenu.path === '/dashboard') {
+                        renderDashboardScene();
+                    }
+                    return;
+                }
+                currentOverview = resp.data;
+                if (currentMenu.path === '/dashboard') {
+                    renderDashboardScene();
+                }
+            },
+            error: function () {
+                if (currentMenu.path === '/dashboard') {
+                    if (!currentOverview) {
+                        renderDashboardScene();
+                    }
+                }
             }
         });
     }
@@ -416,17 +436,29 @@
     }
 
     function refreshOverviewData() {
-        $.get('/api/dashboard/overview', function (resp) {
-            if (!resp || Number(resp.code) !== 0 || !resp.data) {
-                return;
-            }
-            var prev = currentOverview;
-            currentOverview = resp.data;
-            if (currentMenu.path === '/dashboard') {
-                smoothUpdateOverviewCards(currentOverview, prev);
-                smoothUpdateChart(currentOverview);
-                smoothUpdateDashboardPanel(currentOverview);
-                fetchAndRenderLoginTrend();
+        $.ajax({
+            url: '/api/dashboard/overview',
+            method: 'GET',
+            timeout: 10000,
+            success: function (resp) {
+                if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    return;
+                }
+                var prev = currentOverview;
+                currentOverview = resp.data;
+                if (currentMenu.path === '/dashboard') {
+                    try {
+                        smoothUpdateOverviewCards(currentOverview, prev);
+                        smoothUpdateChart(currentOverview);
+                        smoothUpdateDashboardPanel(currentOverview);
+                        fetchAndRenderLoginTrend();
+                    } catch (e) {
+                        console.error('Failed to refresh dashboard:', e);
+                    }
+                }
+            },
+            error: function () {
+                console.warn('Failed to fetch dashboard overview');
             }
         });
     }
@@ -571,6 +603,7 @@
     function renderDashboardScene() {
         var menuStats = buildMenuStats(cachedMenus);
         var overview = currentOverview || {};
+        var hasData = currentOverview !== null;
 
         destroyAllDashboardCharts();
 
@@ -588,20 +621,40 @@
         ]);
 
         setPrimaryPanelTitle('系统趋势');
-        $('#primary-panel-body').html(
-            '<canvas id="overviewChart" height="180"></canvas>' +
-            '<hr class="my-3">' +
-            '<h6 class="font-weight-bold mb-2"><i class="fas fa-chart-line mr-1"></i>近七日登录趋势</h6>' +
-            '<canvas id="loginTrendChart" height="200"></canvas>'
-        );
-        setTimeout(function () {
-            renderChart({
-                userCount: Number(overview.userCount || 0),
-                menuCount: Number(overview.menuCount || menuStats.total || 0),
-                onlineSessions: Number(overview.onlineSessions || 0)
-            });
-            fetchAndRenderLoginTrend();
-        }, 30);
+
+        var panelHtml = '' +
+            '<div class="chart-wrapper chart-sm" id="overviewChartWrapper">' +
+            '<canvas id="overviewChart"></canvas>' +
+            '</div>' +
+            '<hr class="chart-section-divider">' +
+            '<div class="chart-section-title"><i class="fas fa-chart-line"></i>近七日登录趋势</div>' +
+            '<div class="chart-wrapper chart-md" id="loginTrendChartWrapper">' +
+            '<canvas id="loginTrendChart"></canvas>' +
+            '<div class="chart-loading-mask" id="loginTrendLoading" style="display:none;">' +
+            '<div class="spinner-border" role="status"></div>' +
+            '</div>' +
+            '</div>';
+
+        $('#primary-panel-body').html(panelHtml);
+
+        clearDashboardRenderTimer();
+        dashboardRenderTimer = setTimeout(function () {
+            dashboardRenderTimer = null;
+            try {
+                renderChart({
+                    userCount: Number(overview.userCount || 0),
+                    menuCount: Number(overview.menuCount || menuStats.total || 0),
+                    onlineSessions: Number(overview.onlineSessions || 0)
+                });
+            } catch (e) {
+                console.error('Failed to render overview chart:', e);
+            }
+            try {
+                fetchAndRenderLoginTrend();
+            } catch (e) {
+                console.error('Failed to fetch login trend:', e);
+            }
+        }, hasData ? 0 : 50);
 
         $('#dynamic-panel-title').text('运行状态');
         renderDashboardPanel(overview, menuStats);
@@ -1817,37 +1870,45 @@
             return;
         }
 
-        $cards.each(function (index) {
-            if (index >= metrics.length) return;
-            var metric = metrics[index];
-            var $h3 = $(this).find('h3');
-            var newValue = metric.key === 'serverTime'
-                ? formatTime(metric.value)
-                : formatCardValue(metric.value);
+        try {
+            $cards.each(function (index) {
+                if (index >= metrics.length) return;
+                var metric = metrics[index];
+                var $h3 = $(this).find('h3');
+                var newValue = metric.key === 'serverTime'
+                    ? formatTime(metric.value)
+                    : formatCardValue(metric.value);
 
-            var oldValue = metric.key === 'serverTime'
-                ? formatTime(prev ? prev[metric.key] : null)
-                : formatCardValue(prev ? prev[metric.key] : null);
+                var oldValue = metric.key === 'serverTime'
+                    ? formatTime(prev ? prev[metric.key] : null)
+                    : formatCardValue(prev ? prev[metric.key] : null);
 
-            if (newValue !== oldValue) {
-                $h3.addClass('metric-value-updating');
-                $h3.text(newValue);
-                setTimeout(function () {
-                    $h3.removeClass('metric-value-updating');
-                }, 500);
-            }
-        });
+                if (newValue !== oldValue) {
+                    $h3.addClass('metric-value-updating');
+                    $h3.text(newValue);
+                    setTimeout(function () {
+                        $h3.removeClass('metric-value-updating');
+                    }, 500);
+                }
+            });
+        } catch (e) {
+            console.error('Failed to update overview cards:', e);
+        }
     }
 
     function smoothUpdateChart(overview) {
         if (!overviewChart) return;
         var menuStats = buildMenuStats(cachedMenus);
-        overviewChart.data.datasets[0].data = [
-            Number(overview.userCount || 0),
-            Number(overview.menuCount || menuStats.total || 0),
-            Number(overview.onlineSessions || 0)
-        ];
-        overviewChart.update('none');
+        try {
+            overviewChart.data.datasets[0].data = [
+                Number(overview.userCount || 0),
+                Number(overview.menuCount || menuStats.total || 0),
+                Number(overview.onlineSessions || 0)
+            ];
+            overviewChart.update('none');
+        } catch (e) {
+            console.error('Failed to update overview chart:', e);
+        }
     }
 
     function smoothUpdateDashboardPanel(overview) {
@@ -2194,14 +2255,18 @@
 
     function destroyOverviewChart() {
         if (overviewChart) {
-            overviewChart.destroy();
+            try {
+                overviewChart.destroy();
+            } catch (e) {}
             overviewChart = null;
         }
     }
 
     function destroyLoginTrendChart() {
         if (loginTrendChart) {
-            loginTrendChart.destroy();
+            try {
+                loginTrendChart.destroy();
+            } catch (e) {}
             loginTrendChart = null;
         }
     }
@@ -2209,6 +2274,16 @@
     function destroyAllDashboardCharts() {
         destroyOverviewChart();
         destroyLoginTrendChart();
+        clearDashboardRenderTimer();
+        loginTrendRequestId++;
+        loginTrendLoading = false;
+    }
+
+    function clearDashboardRenderTimer() {
+        if (dashboardRenderTimer) {
+            clearTimeout(dashboardRenderTimer);
+            dashboardRenderTimer = null;
+        }
     }
 
     function renderChart(data) {
@@ -2219,36 +2294,45 @@
 
         destroyOverviewChart();
 
-        overviewChart = new Chart(context, {
-            type: 'bar',
-            data: {
-                labels: ['用户数', '菜单数', '在线会话'],
-                datasets: [{
-                    label: '系统指标',
-                    data: [data.userCount, data.menuCount, data.onlineSessions],
-                    backgroundColor: ['#6c87b5', '#5c9d84', '#b48a52'],
-                    borderRadius: 8,
-                    borderSkipped: false
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
+        var safeData = data || {};
+        var userCount = Number(safeData.userCount || 0);
+        var menuCount = Number(safeData.menuCount || 0);
+        var onlineSessions = Number(safeData.onlineSessions || 0);
+
+        try {
+            overviewChart = new Chart(context, {
+                type: 'bar',
+                data: {
+                    labels: ['用户数', '菜单数', '在线会话'],
+                    datasets: [{
+                        label: '系统指标',
+                        data: [userCount, menuCount, onlineSessions],
+                        backgroundColor: ['#6c87b5', '#5c9d84', '#b48a52'],
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { precision: 0 },
-                        grid: { color: 'rgba(15, 23, 42, 0.08)' }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
                     },
-                    x: {
-                        grid: { display: false }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 },
+                            grid: { color: 'rgba(15, 23, 42, 0.08)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (e) {
+            console.error('Failed to create overview chart:', e);
+        }
     }
 
     function normalizePath(path) {
@@ -3442,40 +3526,50 @@
     }
 
     function fetchAndRenderLoginTrend() {
-        $.ajax({
-            url: '/api/login-logs/trend',
-            method: 'GET',
-            timeout: 10000,
-            success: function (resp) {
-                var context = document.getElementById('loginTrendChart');
-                if (!context) {
-                    return;
-                }
+        var context = document.getElementById('loginTrendChart');
+        if (!context) {
+            return;
+        }
+
+        if (currentMenu.path !== '/dashboard') {
+            return;
+        }
+
+        var requestId = ++loginTrendRequestId;
+        loginTrendLoading = true;
+
+        var $loading = $('#loginTrendLoading');
+        if ($loading.length) {
+            $loading.show();
+        }
+
+        function isStale() {
+            return requestId !== loginTrendRequestId || currentMenu.path !== '/dashboard';
+        }
+
+        function buildFallbackData() {
+            var labels = [];
+            var today = new Date();
+            for (var i = 6; i >= 0; i--) {
+                var d = new Date(today);
+                d.setDate(today.getDate() - i);
+                var mm = String(d.getMonth() + 1).padStart(2, '0');
+                var dd = String(d.getDate()).padStart(2, '0');
+                labels.push(mm + '-' + dd);
+            }
+            return {
+                labels: labels,
+                successData: [0, 0, 0, 0, 0, 0, 0],
+                failData: [0, 0, 0, 0, 0, 0, 0]
+            };
+        }
+
+        function renderChartData(labels, successData, failData) {
+            if (isStale()) {
+                return;
+            }
+            try {
                 destroyLoginTrendChart();
-
-                var labels = [];
-                var successData = [];
-                var failData = [];
-
-                if (resp && Number(resp.code) === 0 && Array.isArray(resp.data) && resp.data.length) {
-                    resp.data.forEach(function (item) {
-                        labels.push(item.date ? item.date.substring(5) : '');
-                        successData.push(Number(item.successCount || 0));
-                        failData.push(Number(item.failCount || 0));
-                    });
-                } else {
-                    var today = new Date();
-                    for (var i = 6; i >= 0; i--) {
-                        var d = new Date(today);
-                        d.setDate(today.getDate() - i);
-                        var mm = String(d.getMonth() + 1).padStart(2, '0');
-                        var dd = String(d.getDate()).padStart(2, '0');
-                        labels.push(mm + '-' + dd);
-                        successData.push(0);
-                        failData.push(0);
-                    }
-                }
-
                 loginTrendChart = new Chart(context, {
                     type: 'line',
                     data: {
@@ -3521,69 +3615,52 @@
                         }
                     }
                 });
-            },
-            error: function () {
-                var context = document.getElementById('loginTrendChart');
-                if (!context) {
+            } catch (e) {
+                console.error('Failed to render login trend chart:', e);
+            } finally {
+                if (!isStale()) {
+                    loginTrendLoading = false;
+                    if ($loading.length) {
+                        $loading.hide();
+                    }
+                }
+            }
+        }
+
+        $.ajax({
+            url: '/api/login-logs/trend',
+            method: 'GET',
+            timeout: 10000,
+            success: function (resp) {
+                if (isStale()) {
                     return;
                 }
-                destroyLoginTrendChart();
 
                 var labels = [];
-                var today = new Date();
-                for (var i = 6; i >= 0; i--) {
-                    var d = new Date(today);
-                    d.setDate(today.getDate() - i);
-                    var mm = String(d.getMonth() + 1).padStart(2, '0');
-                    var dd = String(d.getDate()).padStart(2, '0');
-                    labels.push(mm + '-' + dd);
+                var successData = [];
+                var failData = [];
+
+                if (resp && Number(resp.code) === 0 && Array.isArray(resp.data) && resp.data.length) {
+                    resp.data.forEach(function (item) {
+                        labels.push(item.date ? item.date.substring(5) : '');
+                        successData.push(Number(item.successCount || 0));
+                        failData.push(Number(item.failCount || 0));
+                    });
+                } else {
+                    var fb = buildFallbackData();
+                    labels = fb.labels;
+                    successData = fb.successData;
+                    failData = fb.failData;
                 }
 
-                loginTrendChart = new Chart(context, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: '登录成功',
-                                data: [0, 0, 0, 0, 0, 0, 0],
-                                borderColor: '#5c9d84',
-                                backgroundColor: 'rgba(92,157,132,0.1)',
-                                fill: true,
-                                tension: 0.3,
-                                pointRadius: 4,
-                                pointHoverRadius: 6
-                            },
-                            {
-                                label: '登录失败',
-                                data: [0, 0, 0, 0, 0, 0, 0],
-                                borderColor: '#e05555',
-                                backgroundColor: 'rgba(224,85,85,0.1)',
-                                fill: true,
-                                tension: 0.3,
-                                pointRadius: 4,
-                                pointHoverRadius: 6
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'top' }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { precision: 0 },
-                                grid: { color: 'rgba(15, 23, 42, 0.08)' }
-                            },
-                            x: {
-                                grid: { display: false }
-                            }
-                        }
-                    }
-                });
+                renderChartData(labels, successData, failData);
+            },
+            error: function () {
+                if (isStale()) {
+                    return;
+                }
+                var fb = buildFallbackData();
+                renderChartData(fb.labels, fb.successData, fb.failData);
             }
         });
     }
@@ -3726,15 +3803,29 @@
             url: '/api/login-logs',
             method: 'GET',
             data: params,
+            timeout: 15000,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0 || !resp.data) {
                     AppCommon.showToast(resp ? resp.message : '加载登录日志失败', 'bg-danger');
+                    loginLogState.total = 0;
+                    loginLogState.pages = 0;
+                    renderLoginLogTable([]);
+                    renderLoginLogPagination();
+                    updateLoginLogOverviewCards();
                     return;
                 }
                 var page = resp.data;
                 loginLogState.total = page.total || 0;
                 loginLogState.pages = page.pages || 0;
                 renderLoginLogTable(page.records || []);
+                renderLoginLogPagination();
+                updateLoginLogOverviewCards();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
+                loginLogState.total = 0;
+                loginLogState.pages = 0;
+                renderLoginLogTable([]);
                 renderLoginLogPagination();
                 updateLoginLogOverviewCards();
             }

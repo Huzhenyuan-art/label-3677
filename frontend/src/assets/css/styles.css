@@ -1092,3 +1092,110 @@ body.lock-mode {
     font-family: 'Courier New', monospace;
     font-size: 0.8rem;
 }
+
+.chart-section-divider {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px dashed var(--border-color);
+}
+
+.chart-section-title {
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.chart-section-title i {
+    color: #5c9d84;
+    margin-right: 6px;
+    font-size: 0.9rem;
+}
+
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.chart-wrapper.chart-sm {
+    height: 180px;
+}
+
+.chart-wrapper.chart-md {
+    height: 220px;
+}
+
+.chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-loading-mask {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(2px);
+    z-index: 2;
+    border-radius: 10px;
+}
+
+.chart-loading-mask .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #5c84b5;
+    border-width: 0.2em;
+}
+
+.chart-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    padding: 20px;
+}
+
+.chart-empty-state i {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.login-log-search-bar {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.login-log-table {
+    font-size: 0.9rem;
+}
+
+.login-log-pagination-bar {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.login-log-pagination-bar .btn-group .btn {
+    border-radius: 8px;
+    margin: 0 2px;
+    min-width: 36px;
+}
+
+@media (max-width: 767px) {
+    .chart-wrapper.chart-sm {
+        height: 160px;
+    }
+
+    .chart-wrapper.chart-md {
+        height: 200px;
+    }
+}
