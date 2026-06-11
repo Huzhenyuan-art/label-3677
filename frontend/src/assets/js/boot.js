@@ -1,12 +1,6 @@
 (function (window) {
     'use strict';
 
-    var STORAGE_KEYS = {
-        TOKEN: 'admin_token',
-        USER: 'admin_user',
-        MENUS: 'admin_menus'
-    };
-
     function parseJson(text, fallback) {
         if (!text) {
             return fallback;
@@ -23,7 +17,7 @@
         var padding = (4 - base64.length % 4) % 4;
         base64 += new Array(padding + 1).join('=');
         try {
-            return decodeURIComponent(
+            var decoded = decodeURIComponent(
                 atob(base64)
                     .split('')
                     .map(function (c) {
@@ -31,6 +25,7 @@
                     })
                     .join('')
             );
+            return decoded;
         } catch (_) {
             return '';
         }
@@ -89,27 +84,35 @@
             return;
         }
 
-        var html = '';
-        menus.forEach(function (menu) {
-            if (Array.isArray(menu.children) && menu.children.length) {
-                html += '<li class="nav-item has-treeview">';
-                html += '<a href="#" class="nav-link">';
-                html += '<i class="nav-icon ' + safeIcon(menu.icon) + '"></i>';
-                html += '<p>' + escapeHtml(menu.title || '-') + '<i class="right fas fa-angle-left"></i></p>';
-                html += '</a><ul class="nav nav-treeview">';
-                menu.children.forEach(function (child) {
-                    html += '<li class="nav-item"><a href="#" class="nav-link" data-menu-path="' + escapeHtml(child.path || '') + '">';
-                    html += '<i class="far fa-circle nav-icon"></i>';
-                    html += '<p>' + escapeHtml(child.title || '-') + '</p></a></li>';
-                });
-                html += '</ul></li>';
-            } else {
-                html += '<li class="nav-item"><a href="#" class="nav-link" data-menu-path="' + escapeHtml(menu.path || '') + '">';
-                html += '<i class="nav-icon ' + safeIcon(menu.icon) + '"></i>';
-                html += '<p>' + escapeHtml(menu.title || '-') + '</p></a></li>';
-            }
-        });
-        menuRoot.innerHTML = html;
+        function renderTree(items, level) {
+            var html = '';
+            level = level || 0;
+            items.forEach(function (item) {
+                var path = item.path || item.code || '/dashboard';
+                if (path === '#') path = '/dashboard';
+                var icon = safeIcon(item.icon);
+                var hasChildren = Array.isArray(item.children) && item.children.length > 0;
+                var indent = level > 0 ? 'pl-' + Math.min(level * 2 + 1, 5) : '';
+                var navItemClass = level === 0 ? 'nav-item has-treeview' : 'nav-item';
+                var navLinkClass = level === 0 ? 'nav-link' : 'nav-link ' + indent;
+
+                html += '<li class="' + navItemClass + '">';
+                if (hasChildren) {
+                    html += '<a href="#" class="' + navLinkClass + '" data-toggle="collapse" aria-expanded="false">' +
+                        icon + '<p>' + escapeHtml(item.title || item.name || '-') +
+                        '<i class="right fas fa-angle-left"></i></p></a>' +
+                        '<ul class="nav nav-treeview collapse">' +
+                        renderTree(item.children, level + 1) + '</ul>';
+                } else {
+                    html += '<a href="#" class="' + navLinkClass + '" data-menu-path="' + escapeHtml(path) + '">' +
+                        icon + '<p>' + escapeHtml(item.title || item.name || '-') + '</p></a>';
+                }
+                html += '</li>';
+            });
+            return html;
+        }
+
+        menuRoot.innerHTML = renderTree(menus, 0);
     }
 
     function hideGlobalLoading() {
@@ -123,25 +126,29 @@
         window.location.replace('login.html');
     }
 
+    function clearAuth() {
+        localStorage.removeItem(AppCommon.STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(AppCommon.STORAGE_KEYS.USER);
+        localStorage.removeItem(AppCommon.STORAGE_KEYS.MENUS);
+    }
+
     function bootstrap() {
         hideGlobalLoading();
 
-        var token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+        var token = localStorage.getItem(AppCommon.STORAGE_KEYS.TOKEN);
         if (!token) {
             redirectToLogin();
             return;
         }
 
         if (isTokenExpired(token)) {
-            localStorage.removeItem(STORAGE_KEYS.TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.USER);
-            localStorage.removeItem(STORAGE_KEYS.MENUS);
+            clearAuth();
             redirectToLogin();
             return;
         }
 
-        var user = parseJson(localStorage.getItem(STORAGE_KEYS.USER), {});
-        var menus = parseJson(localStorage.getItem(STORAGE_KEYS.MENUS), []);
+        var user = parseJson(localStorage.getItem(AppCommon.STORAGE_KEYS.USER), {});
+        var menus = parseJson(localStorage.getItem(AppCommon.STORAGE_KEYS.MENUS), []);
         syncUserUI(user);
         renderMenus(menus);
         window.__APP_BOOT_DONE__ = true;
@@ -156,8 +163,18 @@
     window.addEventListener('error', function (event) {
         if (event && event.filename && event.filename.indexOf('app.js') !== -1) {
             hideGlobalLoading();
-            syncUserUI(parseJson(localStorage.getItem(STORAGE_KEYS.USER), {}));
-            renderMenus(parseJson(localStorage.getItem(STORAGE_KEYS.MENUS), []));
+            var user = parseJson(localStorage.getItem(AppCommon.STORAGE_KEYS.USER), {});
+            var menus = parseJson(localStorage.getItem(AppCommon.STORAGE_KEYS.MENUS), []);
+            syncUserUI(user);
+            renderMenus(menus);
         }
     });
+
+    window.AppBoot = {
+        bootstrap: bootstrap,
+        syncUserUI: syncUserUI,
+        renderMenus: renderMenus,
+        hideGlobalLoading: hideGlobalLoading,
+        redirectToLogin: redirectToLogin
+    };
 })(window);

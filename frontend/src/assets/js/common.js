@@ -20,6 +20,9 @@
     var idleCallback = null;
     var isIdleMonitoring = false;
 
+    var pendingAjaxCount = 0;
+    var loadingForceHidden = false;
+
     function getIdleTimeout() {
         var stored = localStorage.getItem(STORAGE_KEYS.IDLE_TIMEOUT);
         var timeout = stored ? parseInt(stored, 10) : DEFAULT_IDLE_TIMEOUT;
@@ -118,11 +121,35 @@
     }
 
     function showLoading() {
-        $('#global-loading').removeClass('d-none');
+        loadingForceHidden = false;
+        _incAjaxLoading();
     }
 
     function hideLoading() {
-        $('#global-loading').addClass('d-none');
+        _decAjaxLoading();
+    }
+
+    function _decAjaxLoading() {
+        pendingAjaxCount = Math.max(0, pendingAjaxCount - 1);
+        if (pendingAjaxCount === 0) {
+            loadingForceHidden = false;
+            $('#global-loading').addClass('d-none');
+        }
+    }
+
+    function _incAjaxLoading() {
+        pendingAjaxCount += 1;
+        loadingForceHidden = false;
+        $('#global-loading').removeClass('d-none');
+    }
+
+    function forceClearLoading() {
+        pendingAjaxCount = 0;
+        loadingForceHidden = false;
+        var $el = $('#global-loading');
+        if ($el.length) {
+            $el.addClass('d-none');
+        }
     }
 
     var toastQueue = [];
@@ -178,9 +205,43 @@
     }
 
     function escapeHtml(text) {
-        var div = document.createElement('div');
-        div.appendChild(document.createTextNode(text));
-        return div.innerHTML;
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function safeIcon(iconClass) {
+        return iconClass && String(iconClass).trim() ? iconClass : 'fas fa-circle';
+    }
+
+    function formatDatetime(text) {
+        if (!text) return '-';
+        return String(text).replace('T', ' ').substring(0, 19);
+    }
+
+    function formatTime(timeText) {
+        if (!timeText) {
+            return '--:--';
+        }
+        var normalized = String(timeText).replace('T', ' ');
+        return normalized.length > 16 ? normalized.substring(11, 16) : normalized;
+    }
+
+    function formatCardValue(value) {
+        if (value === null || value === undefined || value === '') {
+            return '-';
+        }
+        return String(value);
+    }
+
+    function normalizePath(path) {
+        if (!path || path === '#') {
+            return '/dashboard';
+        }
+        return path;
     }
 
     function redirectToLogin() {
@@ -193,22 +254,22 @@
         localStorage.removeItem(STORAGE_KEYS.MENUS);
     }
 
-    var pendingAjaxCount = 0;
-
     function setupAjax() {
         $(document).off('ajaxSend.appCommon').on('ajaxSend.appCommon', function (_event, _xhr, settings) {
             if (!settings.skipGlobalLoading) {
-                pendingAjaxCount += 1;
-                showLoading();
+                _incAjaxLoading();
             }
         });
 
         $(document).off('ajaxComplete.appCommon').on('ajaxComplete.appCommon', function (_event, _xhr, settings) {
             if (!settings.skipGlobalLoading) {
-                pendingAjaxCount = Math.max(0, pendingAjaxCount - 1);
-                if (pendingAjaxCount === 0) {
-                    hideLoading();
-                }
+                _decAjaxLoading();
+            }
+        });
+
+        $(document).off('ajaxError.appCommon').on('ajaxError.appCommon', function (_event, _xhr, settings) {
+            if (!settings.skipGlobalLoading) {
+                _decAjaxLoading();
             }
         });
 
@@ -345,6 +406,46 @@
         return getRemainingTokenTime() <= 0;
     }
 
+    function flattenMenus(list, depth) {
+        var out = [];
+        var nextDepth = depth || 1;
+        if (!Array.isArray(list)) {
+            return out;
+        }
+
+        list.forEach(function (item) {
+            var node = Object.assign({}, item, { depth: nextDepth });
+            out.push(node);
+            if (Array.isArray(item.children) && item.children.length) {
+                out = out.concat(flattenMenus(item.children, nextDepth + 1));
+            }
+        });
+
+        return out;
+    }
+
+    function buildMenuStats(list) {
+        var rows = flattenMenus(list);
+        var rootCount = Array.isArray(list) ? list.length : 0;
+        var leafCount = rows.filter(function (item) {
+            return !Array.isArray(item.children) || !item.children.length;
+        }).length;
+        var maxDepth = rows.reduce(function (max, item) {
+            return Math.max(max, Number(item.depth || 1));
+        }, 1);
+        var permCount = rows.filter(function (item) {
+            return !!item.permCode;
+        }).length;
+
+        return {
+            total: rows.length,
+            rootCount: rootCount,
+            leafCount: leafCount,
+            maxDepth: maxDepth,
+            permCount: permCount
+        };
+    }
+
     window.AppCommon = {
         STORAGE_KEYS: STORAGE_KEYS,
         DEFAULT_IDLE_TIMEOUT: DEFAULT_IDLE_TIMEOUT,
@@ -354,6 +455,7 @@
         showToast: showToast,
         showLoading: showLoading,
         hideLoading: hideLoading,
+        forceClearLoading: forceClearLoading,
         setupAjax: setupAjax,
         clearAuth: clearAuth,
         redirectToLogin: redirectToLogin,
@@ -368,6 +470,14 @@
         parseJwtPayload: parseJwtPayload,
         getTokenExpireTime: getTokenExpireTime,
         getRemainingTokenTime: getRemainingTokenTime,
-        isTokenExpired: isTokenExpired
+        isTokenExpired: isTokenExpired,
+        escapeHtml: escapeHtml,
+        safeIcon: safeIcon,
+        formatDatetime: formatDatetime,
+        formatTime: formatTime,
+        formatCardValue: formatCardValue,
+        normalizePath: normalizePath,
+        flattenMenus: flattenMenus,
+        buildMenuStats: buildMenuStats
     };
 })(window);
