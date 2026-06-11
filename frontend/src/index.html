@@ -649,6 +649,131 @@
     </div>
 </div>
 
+<div id="task-form-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="task-form-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="task-form-label">新增任务</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="task-form" novalidate>
+                <input type="hidden" id="tf-id">
+                <div class="modal-body">
+                    <div id="tf-error-msg" class="alert alert-danger d-none py-2 mb-3" role="alert"></div>
+                    <div class="form-group">
+                        <label for="tf-task-name">任务名称 <span class="text-danger">*</span></label>
+                        <input id="tf-task-name" type="text" class="form-control" maxlength="64" placeholder="请输入任务名称" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="tf-task-group">任务分组</label>
+                            <input id="tf-task-group" type="text" class="form-control" maxlength="64" placeholder="默认 DEFAULT" value="DEFAULT">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="tf-task-status">任务状态</label>
+                            <select id="tf-task-status" class="form-control">
+                                <option value="0">暂停</option>
+                                <option value="1">运行</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="tf-cron-expression">Cron表达式 <span class="text-danger">*</span></label>
+                        <input id="tf-cron-expression" type="text" class="form-control" maxlength="128" placeholder="如 0 */5 * * * ?" required>
+                        <small class="form-text text-muted">秒 分 时 日 月 周，如 0 */5 * * * ? 表示每5分钟</small>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="tf-bean-name">Bean名称 <span class="text-danger">*</span></label>
+                            <input id="tf-bean-name" type="text" class="form-control" maxlength="128" placeholder="Spring Bean名称" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="tf-method-name">方法名称</label>
+                            <input id="tf-method-name" type="text" class="form-control" maxlength="128" placeholder="默认 execute" value="execute">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="tf-method-params">方法参数</label>
+                        <input id="tf-method-params" type="text" class="form-control" maxlength="512" placeholder="JSON格式参数（选填）">
+                    </div>
+                    <div class="form-group">
+                        <label for="tf-remark">备注</label>
+                        <textarea id="tf-remark" class="form-control" maxlength="255" rows="2" placeholder="选填"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="task-delete-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="task-delete-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="task-delete-label">删除确认</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">确定要删除该定时任务吗？此操作为逻辑删除。</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" id="task-delete-confirm-btn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="execution-log-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="execution-log-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="execution-log-label">执行记录</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="exec-log-task-info" class="mb-3 text-muted"></div>
+                <div class="table-responsive" id="exec-log-table-container"></div>
+                <div id="exec-log-pagination" class="user-pagination-bar"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="exec-detail-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exec-detail-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exec-detail-label">执行详情</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="exec-detail-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <tbody id="exec-detail-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container p-3">
     <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2600">
         <div class="toast-header bg-primary text-white">

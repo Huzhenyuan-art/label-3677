@@ -137,3 +137,39 @@ CREATE TABLE IF NOT EXISTS sys_notice_read (
   INDEX idx_user_id (user_id),
   INDEX idx_notice_id (notice_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='通知公告已读记录表';
+
+CREATE TABLE IF NOT EXISTS scheduled_task (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  task_name VARCHAR(64) NOT NULL COMMENT '任务名称',
+  task_group VARCHAR(64) NOT NULL DEFAULT 'DEFAULT' COMMENT '任务分组',
+  cron_expression VARCHAR(128) NOT NULL COMMENT 'Cron表达式',
+  bean_name VARCHAR(128) NOT NULL COMMENT 'Spring Bean名称',
+  method_name VARCHAR(128) NOT NULL DEFAULT 'execute' COMMENT '执行方法名',
+  method_params VARCHAR(512) NULL COMMENT '方法参数（JSON格式）',
+  task_status TINYINT NOT NULL DEFAULT 0 COMMENT '任务状态（0-暂停，1-运行）',
+  remark VARCHAR(255) NULL COMMENT '备注',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT chk_task_status CHECK (task_status IN (0, 1)),
+  CONSTRAINT chk_task_deleted CHECK (deleted IN (0, 1)),
+  INDEX idx_task_group (task_group),
+  INDEX idx_task_status (task_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='定时任务表';
+
+CREATE TABLE IF NOT EXISTS task_execution_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  task_id BIGINT NOT NULL COMMENT '任务ID',
+  task_name VARCHAR(64) NOT NULL COMMENT '任务名称',
+  task_group VARCHAR(64) NOT NULL COMMENT '任务分组',
+  cron_expression VARCHAR(128) NOT NULL COMMENT 'Cron表达式',
+  execution_status TINYINT NOT NULL COMMENT '执行状态（0-失败，1-成功）',
+  start_time DATETIME NOT NULL COMMENT '开始时间',
+  end_time DATETIME NULL COMMENT '结束时间',
+  execution_duration BIGINT NOT NULL DEFAULT 0 COMMENT '执行耗时（毫秒）',
+  error_message TEXT NULL COMMENT '错误信息',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_task_id (task_id),
+  INDEX idx_execution_status (execution_status),
+  INDEX idx_start_time (start_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='任务执行日志表';

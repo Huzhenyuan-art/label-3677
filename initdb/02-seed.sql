@@ -44,3 +44,23 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, id FROM sys_menu
 ON DUPLICATE KEY UPDATE role_id = role_id;
+
+INSERT INTO sys_menu (id, parent_id, title, path, icon, perm_code, sort_order, visible)
+VALUES
+  (12, 2, '定时任务', '/scheduled-tasks', 'fas fa-clock', 'scheduledTask:manage', 7, 1)
+ON DUPLICATE KEY UPDATE
+  title = VALUES(title),
+  path = VALUES(path),
+  icon = VALUES(icon),
+  perm_code = VALUES(perm_code),
+  sort_order = VALUES(sort_order),
+  visible = VALUES(visible);
+
+INSERT INTO scheduled_task (id, task_name, task_group, cron_expression, bean_name, method_name, method_params, task_status, remark)
+VALUES
+  (1, '系统状态检测', 'DEFAULT', '0 */5 * * * ?', 'systemHealthTask', 'execute', NULL, 1, '每5分钟检测一次系统状态'),
+  (2, '过期会话清理', 'DEFAULT', '0 0 */1 * * ?', 'sessionCleanupTask', 'execute', NULL, 0, '每小时清理一次过期会话')
+ON DUPLICATE KEY UPDATE
+  task_name = VALUES(task_name),
+  cron_expression = VALUES(cron_expression),
+  remark = VALUES(remark);

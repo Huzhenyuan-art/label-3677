@@ -1,0 +1,39 @@
+package com.prompt2repo.admin.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Builder;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+public class ScheduledTaskVO {
+
+    private Long id;
+
+    private String taskName;
+
+    private String taskGroup;
+
+    private String cronExpression;
+
+    private String beanName;
+
+    private String methodName;
+
+    private String methodParams;
+
+    private Integer taskStatus;
+
+    private String remark;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime nextExecutionTime;
+}
