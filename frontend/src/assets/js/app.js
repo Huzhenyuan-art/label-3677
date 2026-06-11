@@ -1007,15 +1007,19 @@
             '</div>' +
             '<input type="text" id="menu-search-input" class="form-control" placeholder="输入关键词搜索菜单名称、路径、权限码..." ' +
             'value="' + escapeHtml(keyword) + '" style="min-width: 320px;">' +
-            (keyword ? '<div class="input-group-append"><button type="button" id="menu-search-clear" class="btn btn-outline-secondary"><i class="fas fa-times"></i></button></div>' : '') +
+            '<div class="input-group-append"' + (keyword ? '' : ' style="display:none;"') + '>' +
+            '<button type="button" id="menu-search-clear" class="btn btn-outline-secondary"><i class="fas fa-times"></i></button>' +
+            '</div>' +
             '</div>' +
             '<span class="text-muted text-sm mb-2">只读预览模式，搜索不会修改任何菜单数据</span>' +
             '</div>' +
-            (keyword ? '<span class="text-sm text-info mb-2"><i class="fas fa-filter mr-1"></i>找到 ' + countFilteredMenus(displayMenus) + ' 个匹配项</span>' : '') +
+            '<span class="text-sm text-info mb-2 menu-search-count"' + (keyword ? '' : ' style="display:none;"') + '>' +
+            '<i class="fas fa-filter mr-1"></i>找到 <span id="menu-search-count-num">' + (keyword ? countFilteredMenus(displayMenus) : 0) + '</span> 个匹配项' +
+            '</span>' +
             '</div>' +
             '</div>';
 
-        var treeHtml = '<div class="menu-preview-tree" style="max-height: 500px; overflow-y: auto;">';
+        var treeHtml = '<div id="menu-preview-tree-container" class="menu-preview-tree" style="max-height: 500px; overflow-y: auto;">';
         if (!displayMenus || !displayMenus.length) {
             treeHtml += '<div class="text-center text-muted py-5">' + (keyword ? '未找到匹配的菜单' : '暂无菜单数据') + '</div>';
         } else {
@@ -1025,11 +1029,53 @@
 
         $('#primary-panel-body').html(headerHtml + treeHtml);
         bindMenuPreviewEvents();
+
+        var $input = $('#menu-search-input');
+        if ($input.length) {
+            $input.focus();
+            var inputEl = $input[0];
+            if (inputEl.setSelectionRange && keyword) {
+                var len = keyword.length;
+                try { inputEl.setSelectionRange(len, len); } catch (e) {}
+            }
+        }
     }
+
+    function refreshMenuPreviewTreeOnly() {
+        var keyword = menuManageState.searchKeyword || '';
+        var menus = menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus;
+        var displayMenus = keyword ? menuManageState.filteredMenus : menus;
+
+        var treeHtml = '';
+        if (!displayMenus || !displayMenus.length) {
+            treeHtml = '<div class="text-center text-muted py-5">' + (keyword ? '未找到匹配的菜单' : '暂无菜单数据') + '</div>';
+        } else {
+            treeHtml = buildPreviewTreeHtml(displayMenus, 1, keyword);
+        }
+
+        var $container = $('#menu-preview-tree-container');
+        if ($container.length) {
+            $container.html(treeHtml);
+        }
+
+        var $clearBtn = $('#menu-search-clear');
+        if ($clearBtn.length) {
+            $clearBtn.closest('.input-group-append').toggle(!!keyword);
+        }
+
+        var $countWrap = $('.menu-search-count');
+        if ($countWrap.length) {
+            $countWrap.toggle(!!keyword);
+            $('#menu-search-count-num').text(keyword ? countFilteredMenus(displayMenus) : 0);
+        }
+    }
+
+    var menuSearchDebounceTimer = null;
 
     function bindMenuPreviewEvents() {
         $(document).off('input.menuSearch').on('input.menuSearch', '#menu-search-input', function () {
-            var keyword = $.trim($(this).val());
+            var $input = $(this);
+            var keyword = $.trim($input.val());
             menuManageState.searchKeyword = keyword;
             if (keyword) {
                 menuManageState.filteredMenus = filterMenusByKeyword(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus, keyword);
@@ -1037,14 +1083,24 @@
             } else {
                 menuManageState.filteredMenus = [];
             }
-            renderMenuPreviewPanel(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus);
-            renderPermissionMatrix();
+
+            if (menuSearchDebounceTimer) {
+                clearTimeout(menuSearchDebounceTimer);
+            }
+            menuSearchDebounceTimer = setTimeout(function () {
+                refreshMenuPreviewTreeOnly();
+                renderPermissionMatrix();
+            }, 80);
         });
 
         $(document).off('click.menuSearchClear').on('click.menuSearchClear', '#menu-search-clear', function () {
             menuManageState.searchKeyword = '';
             menuManageState.filteredMenus = [];
-            renderMenuPreviewPanel(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus);
+            var $input = $('#menu-search-input');
+            if ($input.length) {
+                $input.val('').focus();
+            }
+            refreshMenuPreviewTreeOnly();
             renderPermissionMatrix();
         });
 
@@ -1053,7 +1109,7 @@
             var row = $(this).closest('.menu-preview-item');
             var id = Number(row.data('id'));
             menuManageState.expandedIds[id] = menuManageState.expandedIds[id] === false ? true : false;
-            renderMenuPreviewPanel(menuManageState.allMenus.length ? menuManageState.allMenus : cachedMenus);
+            refreshMenuPreviewTreeOnly();
         });
     }
 
