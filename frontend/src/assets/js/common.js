@@ -141,7 +141,25 @@
         localStorage.removeItem(STORAGE_KEYS.MENUS);
     }
 
+    var pendingAjaxCount = 0;
+
     function setupAjax() {
+        $(document).off('ajaxSend.appCommon').on('ajaxSend.appCommon', function (_event, _xhr, settings) {
+            if (!settings.skipGlobalLoading) {
+                pendingAjaxCount += 1;
+                showLoading();
+            }
+        });
+
+        $(document).off('ajaxComplete.appCommon').on('ajaxComplete.appCommon', function (_event, _xhr, settings) {
+            if (!settings.skipGlobalLoading) {
+                pendingAjaxCount = Math.max(0, pendingAjaxCount - 1);
+                if (pendingAjaxCount === 0) {
+                    hideLoading();
+                }
+            }
+        });
+
         $.ajaxSetup({
             timeout: 15000,
             dataFilter: function (data, type) {
@@ -173,22 +191,17 @@
                 }
             },
             beforeSend: function (xhr, settings) {
-                if (!settings.skipGlobalLoading) {
-                    showLoading();
-                }
                 var token = localStorage.getItem(STORAGE_KEYS.TOKEN);
                 if (token && !settings.skipAuth) {
                     xhr.setRequestHeader('Authorization', 'Bearer ' + token);
                 }
             },
             complete: function (_, statusText) {
-                hideLoading();
                 if (statusText === 'timeout') {
                     showToast('请求超时，请检查网络连接', 'bg-warning');
                 }
             },
             error: function (xhr) {
-                hideLoading();
                 var response = xhr.responseJSON;
                 if (xhr.status === 502 || xhr.status === 503 || xhr.status === 504) {
                     showToast('后端服务启动中，请稍后再试', 'bg-warning');

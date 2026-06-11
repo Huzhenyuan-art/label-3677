@@ -175,28 +175,35 @@
     }
 
     $(function () {
-        AppCommon.setupAjax();
+        try {
+            AppCommon.hideLoading();
 
-        var token = localStorage.getItem(AppCommon.STORAGE_KEYS.TOKEN);
-        if (!token) {
-            AppCommon.redirectToLogin();
-            return;
+            var token = localStorage.getItem(AppCommon.STORAGE_KEYS.TOKEN);
+            if (!token) {
+                AppCommon.redirectToLogin();
+                return;
+            }
+
+            if (AppCommon.isTokenExpired()) {
+                AppCommon.clearAuth();
+                AppCommon.redirectToLogin();
+                return;
+            }
+
+            AppCommon.setupAjax();
+            bindEvents();
+            loadBaseData();
+            startIdleMonitor();
+            startTokenCountdown();
+
+            window.AppDashboard = {
+                showLockScreen: showLockScreen
+            };
+        } catch (err) {
+            AppCommon.hideLoading();
+            console.error('App init failed:', err);
+            AppCommon.showToast('页面初始化失败，请按 Ctrl+F5 强制刷新', 'bg-danger');
         }
-
-        if (AppCommon.isTokenExpired()) {
-            AppCommon.clearAuth();
-            AppCommon.redirectToLogin();
-            return;
-        }
-
-        bindEvents();
-        loadBaseData();
-        startIdleMonitor();
-        startTokenCountdown();
-
-        window.AppDashboard = {
-            showLockScreen: showLockScreen
-        };
     });
 
     function startIdleMonitor() {
@@ -2291,12 +2298,14 @@
             var row = $(this).closest('tr');
             rolePageState.pendingDeleteRoleId = row.data('id');
             rolePageState.pendingDeleteRoleName = row.data('role-name');
-            $('#role-delete-body').text('确定要删除角色「' + (rolePageState.pendingDeleteRoleName + '」吗？');
+            $('#role-delete-body').text('确定要删除角色「' + (rolePageState.pendingDeleteRoleName || '') + '」吗？');
             $('#role-delete-modal').modal('show');
         });
 
         $(document).off('click.roleDeleteConfirm').on('click.roleDeleteConfirm', '#role-delete-confirm-btn', function () {
-            if (rolePageState.pendingDeleteRoleId && deleteRole(rolePageState.pendingDeleteRoleId));
+            if (rolePageState.pendingDeleteRoleId) {
+                deleteRole(rolePageState.pendingDeleteRoleId);
+            }
             $('#role-delete-modal').modal('hide');
             rolePageState.pendingDeleteRoleId = null;
         });

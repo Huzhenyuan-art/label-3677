@@ -6,6 +6,101 @@
 
 ## 修复记录
 
+### 修复 #6: 登录后首页仍空白（浏览器缓存旧 JS + CDN 依赖不稳定）
+
+**日期**: 2026-06-11
+
+**问题描述**:
+修复 #5 的语法错误后，部分用户登录成功仍看到首页停留在初始占位状态：侧边栏无菜单、昵称显示「加载中...」、令牌倒计时显示「计算中...」、仪表盘卡片不更新。
+
+**影响文件**:
+- `frontend/build.mjs`
+- `frontend/nginx.conf`
+- `frontend/src/index.html`
+- `frontend/src/login.html`
+- `frontend/src/assets/js/boot.js`（新增）
+- `frontend/src/assets/js/common.js`
+- `frontend/src/assets/js/app.js`
+
+**问题位置与详情**:
+
+| 问题点 | 说明 |
+|--------|------|
+| 浏览器强缓存 | `app.js` 无版本号，浏览器继续使用带语法错误的旧缓存文件 |
+| CDN 外链脚本 | `index.html` 依赖 jsdelivr 加载 jQuery/Chart.js，网络不稳定时 `app.js` 无法执行 |
+| 无兜底初始化 | 主脚本失败时，页面永远停留在 HTML 占位文案 |
+| 遮罩层计数 | 多个并行请求时 `$.ajaxSetup.complete` 可能被局部回调覆盖，遮罩层偶发不关闭 |
+
+**根本原因**:
+#5 仅修复了源码语法，但 nginx 对静态 JS 未设置 `no-cache`，浏览器仍可能使用旧版 `app.js`；同时首页关键依赖全部走 CDN，在部分网络环境下主脚本加载失败，导致 `loadBaseData()` 从未执行。
+
+**修复方式**:
+1. 构建时通过 `build.mjs` 将 jQuery/Bootstrap/Chart.js/AdminLTE 下载到 `assets/vendor/`，HTML 改为本地引用并追加版本号 `?v=2026061103`
+2. nginx 对 `.js/.css` 响应添加 `Cache-Control: no-cache`
+3. 新增 `boot.js`：在 `app.js` 之前用原生 JS 从 `localStorage` 恢复用户信息/侧边栏菜单，并在 `app.js` 报错时兜底
+4. `common.js` 改用 `$(document).ajaxSend/ajaxComplete` 管理全局遮罩层，避免局部 `complete` 覆盖全局逻辑
+5. `app.js` 初始化增加 `try/catch`，启动时强制 `hideLoading()`
+
+**验证方式**:
+1. 执行 `docker compose up --build -d frontend`
+2. 浏览器按 **Ctrl+F5** 强制刷新（或清理站点缓存）
+3. 登录后确认侧边栏菜单、用户昵称、仪表盘数据正常显示
+4. 开发者工具 Network 中 `app.js?v=2026061103`、`boot.js?v=2026061103` 均返回 200
+5. Console 无 `SyntaxError` / `$ is not a function` 报错
+
+---
+
+### 修复 #5: 登录后首页空白（app.js 语法错误导致脚本未执行）
+
+**日期**: 2026-06-11
+
+**问题描述**:
+用户登录成功后跳转到 `index.html`，页面一片空白：侧边栏菜单未渲染、个人信息仍显示「加载中...」、仪表盘数据不加载。HTML 结构可见，但所有由 `app.js` 驱动的动态内容均失效。
+
+**影响文件**:
+- `frontend/src/assets/js/app.js`
+
+**问题位置与详情**:
+
+| 行号（修复前） | 函数/上下文 | 错误代码 | 说明 |
+|---------------|------------|----------|------|
+| ~2294 | `bindRoleManageEvents` 角色删除确认 | `'确定要删除角色「' + (rolePageState.pendingDeleteRoleName + '」吗？')` | 字符串拼接缺少闭合引号与 `+`，导致整文件 JavaScript 解析失败 |
+| ~2299 | 角色删除确认按钮 | `if (... && deleteRole(...));` | 条件后多余分号，删除逻辑实际不会执行（附带修复） |
+
+**根本原因**:
+`app.js` 第 2294 行在拼接删除确认文案时，误将 `'」吗？'` 写入了括号内的字符串，造成字符串字面量提前结束、括号不匹配。浏览器解析 `app.js` 时抛出 `SyntaxError: missing ) after argument list`，后续所有初始化逻辑（`loadBaseData`、`renderSidebarMenus`、`syncUserUI`、`renderDashboardScene` 等）均无法执行。
+
+由于 `index.html` 在 `<body>` 末尾才加载 `app.js`，语法错误不会阻止静态 HTML 渲染，因此用户能看到导航栏骨架和「加载中...」占位，但看不到菜单与个人信息。
+
+**修复方式**:
+- 修正第 2294 行字符串拼接，与菜单删除确认（第 1248 行）保持相同写法
+- 顺带修正第 2299 行 `if` 语句多余分号，确保角色删除回调正常执行
+
+**修复前代码**:
+```javascript
+$('#role-delete-body').text('确定要删除角色「' + (rolePageState.pendingDeleteRoleName + '」吗？');
+// ...
+if (rolePageState.pendingDeleteRoleId && deleteRole(rolePageState.pendingDeleteRoleId));
+```
+
+**修复后代码**:
+```javascript
+$('#role-delete-body').text('确定要删除角色「' + (rolePageState.pendingDeleteRoleName || '') + '」吗？');
+// ...
+if (rolePageState.pendingDeleteRoleId) {
+    deleteRole(rolePageState.pendingDeleteRoleId);
+}
+```
+
+**验证方式**:
+1. 执行 `node --check frontend/src/assets/js/app.js`，确认无语法错误
+2. 重新构建并启动前端：`docker compose up --build -d frontend`
+3. 访问 http://localhost:3000，使用 `admin / 123456` 登录
+4. 确认侧边栏显示菜单树、左下角显示用户昵称、仪表盘卡片与图表正常加载
+5. 浏览器开发者工具 Console 无 `SyntaxError` 报错
+
+---
+
 ### 修复 #4: 分配请求 DTO 校验注解错误（@NotEmpty 使用不当）
 
 **日期**: 2026-06-10
