@@ -521,11 +521,30 @@
         });
     }
 
+    function getCurrentOverview() {
+        return currentOverview;
+    }
+
+    function refreshOverviewCards() {
+        if (currentOverview) {
+            var cachedMenus = (window.AppLayout && window.AppLayout.getCachedMenus) ? window.AppLayout.getCachedMenus() : [];
+            var menuStats = AppCommon.buildMenuStats(cachedMenus);
+            renderOverviewCards([
+                { label: '系统用户数', value: currentOverview.userCount, icon: 'fas fa-users', tone: 'tone-info', note: '含管理员与业务账号' },
+                { label: '菜单权限数', value: currentOverview.menuCount || menuStats.total, icon: 'fas fa-list', tone: 'tone-success', note: '用于前端动态渲染' },
+                { label: '在线会话数', value: currentOverview.onlineSessions, icon: 'fas fa-signal', tone: 'tone-warning', note: '5 分钟内活跃会话' },
+                { label: '服务器时间', value: AppCommon.formatTime(currentOverview.serverTime), icon: 'far fa-clock', tone: 'tone-danger', note: '统一来自后端系统时钟' }
+            ]);
+        }
+    }
+
     window.AppDashboard = {
         OVERVIEW_REFRESH_INTERVAL: OVERVIEW_REFRESH_INTERVAL,
         setCurrentMenu: setCurrentMenu,
         getCurrentMenu: getCurrentMenu,
         fetchOverview: fetchOverview,
+        getCurrentOverview: getCurrentOverview,
+        refreshOverviewCards: refreshOverviewCards,
         startOverviewRefresh: startOverviewRefresh,
         stopOverviewRefresh: stopOverviewRefresh,
         refreshOverviewData: refreshOverviewData,

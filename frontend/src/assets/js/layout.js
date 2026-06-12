@@ -228,12 +228,76 @@
         });
     }
 
-    function renderOverviewCards() {
-        var stats = AppCommon.buildMenuStats(cachedMenus);
-        $('.overview-total-menus').text(stats.total);
-        $('.overview-visible-menus').text(stats.visible);
-        $('.overview-hidden-menus').text(stats.hidden);
-        $('.overview-visible-ratio').text(stats.ratio);
+    function escapeHtml(text) {
+        return String(text == null ? '' : String(text))
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function renderOverviewCards(cards) {
+        if (arguments.length === 0) {
+            var stats = AppCommon.buildMenuStats(cachedMenus);
+            $('.overview-total-menus').text(stats.total);
+            $('.overview-visible-menus').text(stats.visible);
+            $('.overview-hidden-menus').text(stats.hidden);
+            $('.overview-visible-ratio').text(stats.ratio);
+            return;
+        }
+
+        var container = $('#overview-cards');
+        if (!container.length || !Array.isArray(cards) || !cards.length) return;
+        var html = '<div class="row">';
+        cards.forEach(function (card) {
+            html += '<div class="col-lg-3 col-6 mb-3">' +
+                '<div class="overview-card ' + (card.tone || '') + '">' +
+                '<div class="d-flex align-items-center">' +
+                '<div class="overview-icon mr-3"><i class="' + (card.icon || 'fas fa-info-circle') + '"></i></div>' +
+                '<div class="overview-content flex-grow-1">' +
+                '<div class="overview-label text-sm text-muted">' + escapeHtml(card.label || '') + '</div>' +
+                '<div class="overview-value font-weight-bold">' + (card.value != null ? escapeHtml(String(card.value)) : '-') + '</div>' +
+                '<div class="overview-note text-xs text-muted">' + escapeHtml(card.note || '') + '</div>' +
+                '</div></div></div></div>';
+        });
+        html += '</div>';
+        container.html(html);
+    }
+
+    function setHero(title, subtitle, tags) {
+        var heroSection = $('#hero-section');
+        if (!heroSection.length) return;
+        $('#hero-title').text(title || '');
+        $('#hero-subtitle').text(subtitle || '');
+        var tagContainer = $('#hero-tags');
+        if (tagContainer.length) {
+            tagContainer.empty();
+            if (Array.isArray(tags) && tags.length) {
+                tags.forEach(function (tag) {
+                    tagContainer.append('<span class="badge badge-soft-primary mr-1">' + escapeHtml(tag) + '</span>');
+                });
+            }
+        }
+    }
+
+    function setPrimaryPanelTitle(title) {
+        $('#primary-panel-title').text(title || '');
+    }
+
+    function destroyAllDashboardCharts() {
+    }
+
+    function getCurrentMenuPath() {
+        return currentPage;
+    }
+
+    function buildMenuStats(menus) {
+        if (window.App && typeof window.App.getCachedMenus === 'function') {
+            var ms = window.App.getCachedMenus();
+            if (ms && ms.length) menus = ms;
+        }
+        return AppCommon.buildMenuStats(menus || cachedMenus);
     }
 
     function init() {
@@ -257,6 +321,12 @@
         startIdleRemainingTimer: startIdleRemainingTimer,
         stopIdleRemainingTimer: stopIdleRemainingTimer,
         renderOverviewCards: renderOverviewCards,
+        setHero: setHero,
+        setPrimaryPanelTitle: setPrimaryPanelTitle,
+        destroyAllDashboardCharts: destroyAllDashboardCharts,
+        getCurrentMenuPath: getCurrentMenuPath,
+        buildMenuStats: buildMenuStats,
+        escapeHtml: escapeHtml,
         init: init
     };
 })(window, jQuery);
