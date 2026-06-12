@@ -314,7 +314,11 @@
                     showToast('请求超时，请检查网络连接', 'bg-warning');
                 }
             },
-            error: function (xhr) {
+            error: function (xhr, _status, _error) {
+                var settings = this;
+                if (settings.skipGlobalError) {
+                    return;
+                }
                 var response = xhr.responseJSON;
                 if (xhr.status === 502 || xhr.status === 503 || xhr.status === 504) {
                     showToast('后端服务启动中，请稍后再试', 'bg-warning');

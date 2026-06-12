@@ -239,6 +239,8 @@
                     userNoticeState.unreadCount = Number(resp.data) || 0;
                     updateNoticeBadge();
                 }
+            },
+            error: function () {
             }
         });
     }
@@ -311,8 +313,10 @@
             url: '/api/notices/user',
             method: 'GET',
             data: params,
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0 || !resp.data) {
+                    $('#notice-list-container').html('<div class="text-center text-danger py-5">加载消息列表失败</div>');
                     return;
                 }
                 var page = resp.data;
@@ -320,6 +324,9 @@
                 userNoticeState.pages = page.pages || 0;
                 renderUserNoticeList(page.records || []);
                 renderUserNoticePagination();
+            },
+            error: function () {
+                $('#notice-list-container').html('<div class="text-center text-danger py-5">网络异常，请稍后重试</div>');
             }
         });
     }
@@ -414,6 +421,7 @@
         $.ajax({
             url: '/api/notices/mark-all-read',
             method: 'PUT',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     AppCommon.showToast(resp ? resp.message : '操作失败', 'bg-danger');
@@ -423,6 +431,9 @@
                 userNoticeState.unreadCount = 0;
                 updateNoticeBadge();
                 fetchUserNoticePage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }
@@ -431,6 +442,7 @@
         $.ajax({
             url: '/api/notices/' + id,
             method: 'GET',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0 || !resp.data) {
                     AppCommon.showToast(resp ? resp.message : '加载公告详情失败', 'bg-danger');
@@ -442,7 +454,8 @@
                     $.ajax({
                         url: '/api/notices/' + id + '/read',
                         method: 'PUT',
-                        skipGlobalLoading: true
+                        skipGlobalLoading: true,
+                        skipGlobalError: true
                     });
                     if (userNoticeState.unreadCount > 0) {
                         userNoticeState.unreadCount--;
@@ -468,6 +481,9 @@
                 $('#notice-detail-modal').modal('show');
 
                 fetchUserNoticePage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }
@@ -482,9 +498,12 @@
             url: '/api/notices/admin',
             method: 'GET',
             data: params,
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0 || !resp.data) {
-                    AppCommon.showToast(resp ? resp.message : '加载公告列表失败', 'bg-danger');
+                    var errMsg = resp ? resp.message : '加载公告列表失败';
+                    AppCommon.showToast(errMsg, 'bg-danger');
+                    $('#notice-table-container').html('<div class="text-center text-danger py-4">加载失败：' + escapeHtml(errMsg) + '</div>');
                     return;
                 }
                 var page = resp.data;
@@ -493,6 +512,12 @@
                 renderAdminNoticeTable(page.records || []);
                 renderAdminNoticePagination();
                 updateOverviewCards();
+            },
+            error: function (xhr) {
+                var hint = '';
+                if (xhr.status === 403) hint = '（权限不足）';
+                else if (xhr.status === 404) hint = '（接口不存在）';
+                $('#notice-table-container').html('<div class="text-center text-danger py-4">网络异常，请稍后重试' + hint + '</div>');
             }
         });
     }
@@ -620,6 +645,7 @@
             $.ajax({
                 url: '/api/notices/' + id,
                 method: 'GET',
+                skipGlobalError: true,
                 success: function (resp) {
                     if (!resp || Number(resp.code) !== 0 || !resp.data) {
                         AppCommon.showToast(resp ? resp.message : '加载公告失败', 'bg-danger');
@@ -631,6 +657,9 @@
                     $('#nf-type').val(String(n.noticeType || 1));
                     $('#nf-content').val(n.content || '');
                     $('#notice-form-modal').modal('show');
+                },
+                error: function () {
+                    AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
                 }
             });
         } else {
@@ -673,6 +702,7 @@
             method: method,
             contentType: 'application/json',
             data: JSON.stringify(data),
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     $('#nf-error-msg').removeClass('d-none').text(resp ? resp.message : '保存失败');
@@ -681,6 +711,9 @@
                 $('#notice-form-modal').modal('hide');
                 AppCommon.showToast(id ? '编辑成功' : (publish ? '发布成功' : '草稿保存成功'), 'bg-success');
                 fetchAdminNoticePage();
+            },
+            error: function () {
+                $('#nf-error-msg').removeClass('d-none').text('网络异常，请稍后重试');
             }
         });
     }
@@ -689,6 +722,7 @@
         $.ajax({
             url: '/api/notices/' + id + '/publish',
             method: 'PUT',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     AppCommon.showToast(resp ? resp.message : '发布失败', 'bg-danger');
@@ -696,6 +730,9 @@
                 }
                 AppCommon.showToast('发布成功', 'bg-success');
                 fetchAdminNoticePage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }
@@ -704,6 +741,7 @@
         $.ajax({
             url: '/api/notices/' + id + '/recall',
             method: 'PUT',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     AppCommon.showToast(resp ? resp.message : '撤回失败', 'bg-danger');
@@ -711,6 +749,9 @@
                 }
                 AppCommon.showToast('撤回成功', 'bg-success');
                 fetchAdminNoticePage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }
@@ -719,6 +760,7 @@
         $.ajax({
             url: '/api/notices/' + id + '/pin',
             method: 'PUT',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     AppCommon.showToast(resp ? resp.message : '操作失败', 'bg-danger');
@@ -726,6 +768,9 @@
                 }
                 AppCommon.showToast(resp.message || '操作成功', 'bg-success');
                 fetchAdminNoticePage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }
@@ -734,6 +779,7 @@
         $.ajax({
             url: '/api/notices/' + id,
             method: 'DELETE',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     AppCommon.showToast(resp ? resp.message : '删除失败', 'bg-danger');
@@ -741,6 +787,9 @@
                 }
                 AppCommon.showToast('删除成功', 'bg-success');
                 fetchAdminNoticePage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }

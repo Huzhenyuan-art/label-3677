@@ -31,8 +31,7 @@
         if (window.AppLayout && typeof window.AppLayout.renderOverviewCards === 'function') {
             window.AppLayout.renderOverviewCards(cards);
         } else if (window.AppDashboard && typeof window.AppDashboard.renderOverviewCards === 'function') {
-                window.AppDashboard.renderOverviewCards(cards);
-            }
+            window.AppDashboard.renderOverviewCards(cards);
         }
     }
 
@@ -188,6 +187,18 @@
                 fetchUserPage();
             }
         });
+
+        $(document).off('change.roleAssignCheckbox').on('change.roleAssignCheckbox', '.role-assign-checkbox', function () {
+            var id = Number($(this).val());
+            var checked = $(this).is(':checked');
+            if (isNaN(id)) return;
+            var idx = assignRoleState.assignRoleIds.indexOf(id);
+            if (checked && idx === -1) {
+                assignRoleState.assignRoleIds.push(id);
+            } else if (!checked && idx !== -1) {
+                assignRoleState.assignRoleIds.splice(idx, 1);
+            }
+        });
     }
 
     function fetchUserPage() {
@@ -200,9 +211,11 @@
             url: '/api/users',
             method: 'GET',
             data: params,
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0 || !resp.data) {
                     AppCommon.showToast(resp ? resp.message : '加载用户列表失败', 'bg-danger');
+                    $('#user-table-container').html('<div class="text-center text-danger py-4">加载失败，请刷新重试</div>');
                     return;
                 }
                 var page = resp.data;
@@ -211,6 +224,9 @@
                 renderUserTable(page.records || []);
                 renderUserPagination();
                 updateUsersOverviewCards();
+            },
+            error: function () {
+                $('#user-table-container').html('<div class="text-center text-danger py-4">网络异常，请稍后重试</div>');
             }
         });
     }
@@ -357,6 +373,7 @@
                 method: 'PUT',
                 contentType: 'application/json',
                 data: JSON.stringify({ nickname: nickname, avatar: avatar }),
+                skipGlobalError: true,
                 success: function (resp) {
                     if (!resp || Number(resp.code) !== 0) {
                         showUfError(resp ? resp.message : '编辑失败');
@@ -365,6 +382,9 @@
                     $('#user-form-modal').modal('hide');
                     AppCommon.showToast('编辑成功', 'bg-success');
                     fetchUserPage();
+                },
+                error: function () {
+                    showUfError('网络异常，请稍后重试');
                 }
             });
         } else {
@@ -382,6 +402,7 @@
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ username: username, password: password, nickname: nickname, avatar: avatar }),
+                skipGlobalError: true,
                 success: function (resp) {
                     if (!resp || Number(resp.code) !== 0) {
                         showUfError(resp ? resp.message : '新增失败');
@@ -391,6 +412,9 @@
                     AppCommon.showToast('新增成功', 'bg-success');
                     userPageState.page = 1;
                     fetchUserPage();
+                },
+                error: function () {
+                    showUfError('网络异常，请稍后重试');
                 }
             });
         }
@@ -450,16 +474,12 @@
     }
 
     function submitUserRoleAssign() {
-        var ids = [];
-        $('#ur-role-list input[type="checkbox"]:checked').each(function () {
-            ids.push(Number($(this).val()));
-        });
-
         $.ajax({
             url: '/api/roles/assign-roles',
             method: 'PUT',
             contentType: 'application/json',
-            data: JSON.stringify({ userId: assignRoleState.pendingAssignUserId, roleIds: ids }),
+            data: JSON.stringify({ userId: assignRoleState.pendingAssignUserId, roleIds: assignRoleState.assignRoleIds }),
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     $('#ur-error-msg').removeClass('d-none').text(resp ? resp.message : '保存失败');
@@ -468,6 +488,9 @@
                 $('#user-role-modal').modal('hide');
                 AppCommon.showToast('用户角色分配成功', 'bg-success');
                 fetchUserPage();
+            },
+            error: function () {
+                $('#ur-error-msg').removeClass('d-none').text('网络异常，请稍后重试');
             }
         });
     }
@@ -476,6 +499,7 @@
         $.ajax({
             url: '/api/users/' + userId + '/status',
             method: 'PUT',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     AppCommon.showToast(resp ? resp.message : '操作失败', 'bg-danger');
@@ -483,6 +507,9 @@
                 }
                 AppCommon.showToast('状态切换成功', 'bg-success');
                 fetchUserPage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }
@@ -491,6 +518,7 @@
         $.ajax({
             url: '/api/users/' + userId,
             method: 'DELETE',
+            skipGlobalError: true,
             success: function (resp) {
                 if (!resp || Number(resp.code) !== 0) {
                     AppCommon.showToast(resp ? resp.message : '删除失败', 'bg-danger');
@@ -498,6 +526,9 @@
                 }
                 AppCommon.showToast('删除成功', 'bg-success');
                 fetchUserPage();
+            },
+            error: function () {
+                AppCommon.showToast('网络异常，请稍后重试', 'bg-danger');
             }
         });
     }

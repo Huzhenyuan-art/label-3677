@@ -6,6 +6,210 @@
 
 ## 修复记录
 
+### 修复 #8: 用户管理页面功能完整性检查与优化
+
+**日期**: 2026-06-12
+
+**问题描述**:
+用户管理页面在重构后虽然代码结构完整，但缺乏与全局 AJAX 错误处理机制的协调。页面虽然能够正常显示和操作，但当网络请求失败时，会同时弹出全局错误提示（"请求失败，请稍后重试"）和局部错误提示，造成用户体验混乱。同时缺少对防御式编程规范的完整遵循。
+
+**影响文件**:
+- `frontend/src/assets/js/users.js`
+
+**问题位置与详情**:
+
+| 函数 | 请求 | 问题 |
+|------|------|------|
+| `fetchUserPage()` | `GET /api/users` | 有局部 error 回调，但未设置 `skipGlobalError: true` |
+| `submitUserForm()` (编辑) | `PUT /api/users/{id}` | 有局部 error 回调，但未设置 `skipGlobalError: true` |
+| `submitUserForm()` (新增) | `POST /api/users` | 有局部 error 回调，但未设置 `skipGlobalError: true` |
+| `submitUserRoleAssign()` | `PUT /api/roles/assign-roles` | 有局部 error 回调，但未设置 `skipGlobalError: true` |
+| `toggleUserStatus()` | `PUT /api/users/{id}/status` | 有局部 error 回调，但未设置 `skipGlobalError: true` |
+| `deleteUser()` | `DELETE /api/users/{id}` | 有局部 error 回调，但未设置 `skipGlobalError: true` |
+
+**根本原因**:
+jQuery 的 AJAX 机制会**先执行全局 `$.ajaxSetup.error` 回调，再执行请求级别的局部 `error` 回调**。当用户管理页面的请求失败时（例如网络异常、403 权限不足等），全局错误处理器会先弹出通用的"请求失败，请稍后重试"提示，然后模块内的局部错误处理器才会执行并弹出更具体的错误信息（例如"编辑失败"、"网络异常，请稍后重试"等），导致用户看到重复且不一致的错误提示。
+
+**修复方式**:
+为 users.js 中所有带有局部 `error` 回调的 AJAX 请求添加 `skipGlobalError: true` 选项，告知全局错误处理器跳过该请求的通用错误提示，由模块自行处理错误场景。
+
+**修复前代码** (fetchUserPage 示例):
+```javascript
+$.ajax({
+    url: '/api/users',
+    method: 'GET',
+    data: params,
+    success: function (resp) { ... },
+    error: function () {
+        $('#user-table-container').html('<div class="text-center text-danger py-4">网络异常，请稍后重试</div>');
+    }
+});
+```
+
+**修复后代码** (fetchUserPage 示例):
+```javascript
+$.ajax({
+    url: '/api/users',
+    method: 'GET',
+    data: params,
+    skipGlobalError: true,   // 新增：跳过全局错误提示
+    success: function (resp) { ... },
+    error: function () {
+        $('#user-table-container').html('<div class="text-center text-danger py-4">网络异常，请稍后重试</div>');
+    }
+});
+```
+
+**实施步骤**:
+1. 逐一检查 users.js 中所有 `$.ajax()` 调用
+2. 对于有局部 `error` 回调的请求，添加 `skipGlobalError: true`
+3. 共修改 6 处 AJAX 请求（列表查询、编辑、新增、分配角色、切换状态、删除）
+
+**验证方式**:
+1. 访问用户管理页面，确认页面正常渲染：头部 Hero 区域、概览卡片、搜索栏、用户列表、分页条均正确显示
+2. 测试查询功能：输入用户名/昵称/选择状态，点击查询，列表和分页正确更新
+3. 测试新增用户：填写表单后提交，成功后列表刷新并出现新用户
+4. 测试编辑用户：修改昵称后提交，列表数据同步更新
+5. 测试分配角色：勾选角色后保存，用户角色信息正确显示
+6. 测试启/禁用：切换用户状态，状态徽标正确更新
+7. 测试删除用户：确认删除后，用户从列表消失
+8. 异常场景测试：断开网络或故意触发错误，确认仅显示模块自定义的错误提示，不再重复弹出全局"请求失败，请稍后重试"
+
+---
+
+### 修复 #7: 公告管理页面访问时出现错误提示"请求失败，请稍后重试"
+
+**日期**: 2026-06-12
+
+**问题描述**:
+访问公告管理页面时，页面能够正常渲染头部 Hero 区域、概览卡片、搜索栏等 UI 元素，但立即弹出全局错误提示"请求失败，请稍后重试"。页面主体区域有时显示更详细的错误信息（如"加载失败：xxx"或"网络异常，请稍后重试"），但用户首先看到的是全局通用错误提示，体验较差且容易掩盖真正的错误原因。
+
+**影响文件**:
+- `frontend/src/assets/js/common.js`
+- `frontend/src/assets/js/notices.js`
+
+**问题位置与详情**:
+
+**核心问题 1** — [common.js](file:///d:/Desktop/新建文件夹 (2)/label-3677/label-3677/frontend/src/assets/js/common.js#L317-L342) `$.ajaxSetup.error` 全局回调无跳过机制：
+```javascript
+// 修复前：所有请求失败时都会执行全局错误提示
+error: function (xhr) {
+    var response = xhr.responseJSON;
+    if (xhr.status === 502 || ...) { showToast(...); return; }
+    // ... 其他特殊状态码处理 ...
+    showToast('请求失败，请稍后重试', 'bg-danger');  // 无差别弹出
+}
+```
+
+**核心问题 2** — notices.js 中 10 处 AJAX 请求均有局部 error 回调，但未告知全局处理器跳过：
+
+| 函数 | 请求 | 局部错误处理方式 |
+|------|------|-----------------|
+| `fetchUserNoticePage()` | `GET /api/notices/user` | 页面内显示错误文案 |
+| `markAllNoticesAsRead()` | `PUT /api/notices/mark-all-read` | Toast 提示具体错误 |
+| `openNoticeDetail()` (外层) | `GET /api/notices/{id}` | Toast 提示具体错误 |
+| `openNoticeDetail()` (内层) | `PUT /api/notices/{id}/read` | 无（静默失败） |
+| `fetchAdminNoticePage()` | `GET /api/notices/admin` | 页面内显示错误文案 + Toast |
+| `openNoticeForm()` | `GET /api/notices/{id}` | Toast 提示具体错误 |
+| `submitNoticeForm()` | `POST/PUT /api/notices` | 表单内显示错误文案 |
+| `publishNotice()` | `PUT /api/notices/{id}/publish` | Toast 提示具体错误 |
+| `recallNotice()` | `PUT /api/notices/{id}/recall` | Toast 提示具体错误 |
+| `toggleNoticePin()` | `PUT /api/notices/{id}/pin` | Toast 提示具体错误 |
+| `deleteNotice()` | `DELETE /api/notices/{id}` | Toast 提示具体错误 |
+
+**根本原因**:
+jQuery 的 AJAX 执行顺序为：
+1. 执行 `$.ajaxSetup.beforeSend`（全局）
+2. 发送请求
+3. 请求失败时，**先执行 `$.ajaxSetup.error`（全局）** → 弹出"请求失败，请稍后重试"
+4. **再执行请求级别的 `error` 回调**（局部）→ 显示更具体的错误信息
+
+全局错误处理器没有提供"跳过"机制，导致即使业务模块已经有了完善的错误处理逻辑，用户仍然会先看到通用的、毫无信息量的全局错误提示。
+
+**修复方式**:
+
+**第一步** — 增强 `common.js` 全局 AJAX 错误处理器，支持 `skipGlobalError` 选项：
+
+修改 `$.ajaxSetup.error` 回调，在函数开头检查请求配置是否设置了 `skipGlobalError: true`，若设置则直接 return，跳过全局错误提示。
+
+**修复前代码** (common.js):
+```javascript
+error: function (xhr) {
+    var response = xhr.responseJSON;
+    // ... 错误处理逻辑 ...
+    showToast('请求失败，请稍后重试', 'bg-danger');
+}
+```
+
+**修复后代码** (common.js):
+```javascript
+error: function (xhr, _status, _error) {
+    var settings = this;               // this 指向当前请求的 settings 对象
+    if (settings.skipGlobalError) {    // 新增：检查是否跳过全局错误处理
+        return;
+    }
+    var response = xhr.responseJSON;
+    // ... 错误处理逻辑保持不变 ...
+    showToast('请求失败，请稍后重试', 'bg-danger');
+}
+```
+
+**第二步** — 为 notices.js 中所有有局部 error 回调的请求添加 `skipGlobalError: true`：
+
+共修改 11 处 AJAX 请求，确保所有已经自定义错误处理逻辑的请求都不会再触发全局通用错误提示。
+
+**修复前代码** (fetchAdminNoticePage 示例):
+```javascript
+$.ajax({
+    url: '/api/notices/admin',
+    method: 'GET',
+    data: params,
+    success: function (resp) { ... },
+    error: function (xhr) {
+        var hint = '';
+        if (xhr.status === 403) hint = '（权限不足）';
+        else if (xhr.status === 404) hint = '（接口不存在）';
+        $('#notice-table-container').html('<div class="text-center text-danger py-4">网络异常，请稍后重试' + hint + '</div>');
+    }
+});
+```
+
+**修复后代码** (fetchAdminNoticePage 示例):
+```javascript
+$.ajax({
+    url: '/api/notices/admin',
+    method: 'GET',
+    data: params,
+    skipGlobalError: true,   // 新增：告知全局处理器跳过通用错误提示
+    success: function (resp) { ... },
+    error: function (xhr) {
+        var hint = '';
+        if (xhr.status === 403) hint = '（权限不足）';
+        else if (xhr.status === 404) hint = '（接口不存在）';
+        $('#notice-table-container').html('<div class="text-center text-danger py-4">网络异常，请稍后重试' + hint + '</div>');
+    }
+});
+```
+
+**实施步骤**:
+1. 修改 `common.js` 的 `$.ajaxSetup.error` 回调，增加 `skipGlobalError` 判断逻辑
+2. 逐一检查 `notices.js` 中所有 `$.ajax()` 调用
+3. 对于有局部 `error` 回调或 `success` 中已处理非 0 code 的请求，添加 `skipGlobalError: true`
+4. 对于静默失败的请求（如标记已读），也添加 `skipGlobalError: true` 避免干扰用户
+
+**验证方式**:
+1. 正常场景：访问公告管理页面，确认页面正常渲染，不再弹出"请求失败，请稍后重试"
+2. 公告列表查询：输入标题/选择类型/选择状态，点击查询，列表正确过滤
+3. 新增公告：填写标题和内容，选择"保存草稿"或"立即发布"，成功后列表刷新
+4. 编辑公告：修改公告内容后提交，列表数据同步更新
+5. 发布/撤回：对草稿点击"发布"，对已发布点击"撤回"，状态徽标正确更新
+6. 置顶/取消置顶：点击置顶按钮，置顶徽标正确切换
+7. 删除公告：确认删除后，公告从列表消失
+8. 消息中心：点击右上角通知铃铛，消息中心弹窗正常打开，未读数量正确显示
+9. 异常场景：断开网络或故意触发错误，确认仅显示模块自定义的、带有上下文信息的错误提示（如"网络异常，请稍后重试（权限不足）"），不再出现无意义的全局"请求失败，请稍后重试"
+
+---
+
 ### 修复 #6: 登录后首页仍空白（浏览器缓存旧 JS + CDN 依赖不稳定）
 
 **日期**: 2026-06-11
