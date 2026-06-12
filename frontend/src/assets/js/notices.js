@@ -231,7 +231,7 @@
 
     function fetchUnreadNoticeCount() {
         $.ajax({
-            url: '/api/notices/unread-count',
+            url: '/api/user/notices/unread-count',
             method: 'GET',
             skipGlobalLoading: true,
             success: function (resp) {
@@ -310,7 +310,7 @@
         if (userNoticeState.readStatus !== null) params.readStatus = userNoticeState.readStatus;
 
         $.ajax({
-            url: '/api/notices/user',
+            url: '/api/user/notices',
             method: 'GET',
             data: params,
             skipGlobalError: true,
@@ -419,7 +419,7 @@
 
     function markAllNoticesAsRead() {
         $.ajax({
-            url: '/api/notices/mark-all-read',
+            url: '/api/user/notices/read-all',
             method: 'PUT',
             skipGlobalError: true,
             success: function (resp) {
@@ -440,7 +440,7 @@
 
     function openNoticeDetail(id) {
         $.ajax({
-            url: '/api/notices/' + id,
+            url: '/api/user/notices/' + id,
             method: 'GET',
             skipGlobalError: true,
             success: function (resp) {
@@ -452,7 +452,7 @@
 
                 if (notice.readStatus === 0) {
                     $.ajax({
-                        url: '/api/notices/' + id + '/read',
+                        url: '/api/user/notices/' + id + '/read',
                         method: 'PUT',
                         skipGlobalLoading: true,
                         skipGlobalError: true
@@ -495,7 +495,7 @@
         if (adminNoticeState.noticeStatus !== null) params.noticeStatus = adminNoticeState.noticeStatus;
 
         $.ajax({
-            url: '/api/notices/admin',
+            url: '/api/admin/notices',
             method: 'GET',
             data: params,
             skipGlobalError: true,
@@ -643,7 +643,7 @@
         if (id) {
             $('#notice-form-label').text('编辑公告');
             $.ajax({
-                url: '/api/notices/' + id,
+                url: '/api/admin/notices/' + id,
                 method: 'GET',
                 skipGlobalError: true,
                 success: function (resp) {
@@ -695,7 +695,7 @@
         };
 
         var method = id ? 'PUT' : 'POST';
-        var url = id ? '/api/notices/' + id : '/api/notices';
+        var url = id ? '/api/admin/notices/' + id : '/api/admin/notices';
 
         $.ajax({
             url: url,
@@ -720,7 +720,7 @@
 
     function publishNotice(id) {
         $.ajax({
-            url: '/api/notices/' + id + '/publish',
+            url: '/api/admin/notices/' + id + '/publish',
             method: 'PUT',
             skipGlobalError: true,
             success: function (resp) {
@@ -739,7 +739,7 @@
 
     function recallNotice(id) {
         $.ajax({
-            url: '/api/notices/' + id + '/recall',
+            url: '/api/admin/notices/' + id + '/recall',
             method: 'PUT',
             skipGlobalError: true,
             success: function (resp) {
@@ -758,7 +758,7 @@
 
     function toggleNoticePin(id) {
         $.ajax({
-            url: '/api/notices/' + id + '/pin',
+            url: '/api/admin/notices/' + id + '/pin',
             method: 'PUT',
             skipGlobalError: true,
             success: function (resp) {
@@ -777,7 +777,7 @@
 
     function deleteNotice(id) {
         $.ajax({
-            url: '/api/notices/' + id,
+            url: '/api/admin/notices/' + id,
             method: 'DELETE',
             skipGlobalError: true,
             success: function (resp) {
